@@ -38,6 +38,28 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 
 
+def load_config_data():
+    """
+    Safely load config data from JSON file.
+    If the file is empty or corrupted, reinitialize it using the Config class.
+    """
+    config_path = os.path.join(config_dir(), 'otsconfig.json')
+    try:
+        with open(config_path, 'r') as config_file:
+            content = config_file.read().strip()
+            if not content:
+                # File is empty, reinitialize
+                logger.warning("Config file is empty, reinitializing...")
+                config.save()
+                return config._Config__config
+            return json.loads(content)
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        # Config is corrupted or missing, reinitialize
+        logger.error(f"Error loading config: {e}. Reinitializing...")
+        config.save()
+        return config._Config__config
+
+
 class QueueWorker(threading.Thread):
     def __init__(self):
         super().__init__()
@@ -133,27 +155,21 @@ def index():
 @app.route('/search')
 @login_required
 def search():
-    config_path = os.path.join(config_dir(), 'otsconfig.json')
-    with open(config_path, 'r') as config_file:
-        config_data = json.load(config_file)
+    config_data = load_config_data()
     return render_template('search.html', config=config_data)
 
 
 @app.route('/download_queue')
 @login_required
 def download_queue_page():
-    config_path = os.path.join(config_dir(), 'otsconfig.json')
-    with open(config_path, 'r') as config_file:
-        config_data = json.load(config_file)
+    config_data = load_config_data()
     return render_template('download_queue.html', config=config_data)
 
 
 @app.route('/settings')
 @login_required
 def settings():
-    config_path = os.path.join(config_dir(), 'otsconfig.json')
-    with open(config_path, 'r') as config_file:
-        config_data = json.load(config_file)
+    config_data = load_config_data()
     return render_template('settings.html', config=config_data, account_pool=account_pool)
 
 
