@@ -189,8 +189,38 @@ class PlexAPI:
             }
 
             upload_url = f"{self.server_url}/playlists/upload"
+
+            # Build complete URL with parameters for debugging
+            from urllib.parse import urlencode
+            token_masked = self.auth_token[:10] + '...' if self.auth_token else 'None'
+            params_debug = {
+                'sectionID': self.library_section_id,
+                'path': m3u_file_path,
+                'X-Plex-Token': token_masked
+            }
+            full_url_debug = f"{upload_url}?{urlencode(params_debug)}"
+
+            logger.debug(f"=== Request Details ===")
             logger.debug(f"Upload URL: {upload_url}")
-            logger.debug(f"Request params: sectionID={self.library_section_id}, path={m3u_file_path}")
+            logger.debug(f"Full URL (token masked): {full_url_debug}")
+            logger.debug(f"sectionID: {self.library_section_id}")
+            logger.debug(f"path: {m3u_file_path}")
+            logger.debug(f"X-Plex-Token: {token_masked}")
+
+            # Check M3U file exists and peek at contents
+            if os.path.exists(m3u_file_path):
+                file_size = os.path.getsize(m3u_file_path)
+                logger.debug(f"M3U file size: {file_size} bytes")
+                try:
+                    with open(m3u_file_path, 'r', encoding='utf-8') as f:
+                        lines = f.readlines()[:10]  # First 10 lines
+                        logger.debug(f"M3U file first {len(lines)} lines:")
+                        for i, line in enumerate(lines, 1):
+                            logger.debug(f"  Line {i}: {line.rstrip()}")
+                except Exception as e:
+                    logger.warning(f"Could not read M3U file: {e}")
+            else:
+                logger.error(f"M3U file does not exist at: {m3u_file_path}")
 
             logger.info(f"Sending POST request to Plex...")
             response = requests.post(upload_url, params=params, timeout=30)
