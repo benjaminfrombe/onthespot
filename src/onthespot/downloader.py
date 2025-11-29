@@ -462,7 +462,7 @@ class DownloadWorker(QObject):
                             except (RuntimeError, OSError, Exception) as e:
                                 error_str = str(e)
                                 # Check if this is a stall or connection error
-                                if any(x in error_str for x in ['stalled', 'Connection reset', 'Failed reading packet', 'Broken pipe', 'Bad file descriptor']):
+                                if any(x in error_str for x in ['stalled', 'Connection reset', 'Failed reading packet', 'Broken pipe', 'Bad file descriptor', 'Incomplete download']):
                                     download_retry_count += 1
                                     if download_retry_count < max_download_retries:
                                         logger.warning(f"Download interrupted (attempt {download_retry_count}/{max_download_retries}): {error_str}")
@@ -593,7 +593,7 @@ class DownloadWorker(QObject):
                             except Exception as e:
                                 error_str = str(e)
                                 # Check if this is a stall or connection error
-                                if any(x in error_str for x in ['stalled', 'Connection reset', 'Failed reading packet', 'Broken pipe', 'Connection aborted']):
+                                if any(x in error_str for x in ['stalled', 'Connection reset', 'Failed reading packet', 'Broken pipe', 'Connection aborted', 'Incomplete download']):
                                     download_retry_count += 1
                                     if download_retry_count < max_download_retries:
                                         logger.warning(f"Deezer download interrupted (attempt {download_retry_count}/{max_download_retries}): {error_str}")
@@ -684,7 +684,7 @@ class DownloadWorker(QObject):
                             except Exception as e:
                                 error_str = str(e)
                                 # Check if this is a stall or connection error
-                                if any(x in error_str for x in ['stalled', 'Connection reset', 'Failed reading packet', 'Broken pipe', 'Connection aborted']):
+                                if any(x in error_str for x in ['stalled', 'Connection reset', 'Failed reading packet', 'Broken pipe', 'Connection aborted', 'Incomplete download']):
                                     download_retry_count += 1
                                     if download_retry_count < max_download_retries:
                                         logger.warning(f"{item_service} download interrupted (attempt {download_retry_count}/{max_download_retries}): {error_str}")
