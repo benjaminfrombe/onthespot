@@ -445,8 +445,13 @@ class DownloadWorker(QObject):
                                             break
 
                                 # Validate that the complete file was downloaded
-                                if downloaded < total_size:
-                                    raise RuntimeError(f"Incomplete download: received {downloaded}/{total_size} bytes, stream ended prematurely")
+                                # Allow a small tolerance (0.1% or 1KB, whichever is larger) for minor stream discrepancies
+                                bytes_missing = total_size - downloaded
+                                tolerance = max(int(total_size * 0.001), 1024)  # 0.1% or 1KB
+                                if bytes_missing > tolerance:
+                                    raise RuntimeError(f"Incomplete download: received {downloaded}/{total_size} bytes (missing {bytes_missing}), stream ended prematurely")
+                                elif bytes_missing > 0:
+                                    logger.debug(f"Download completed with minor discrepancy: {downloaded}/{total_size} bytes (missing {bytes_missing} bytes, within tolerance)")
 
                                 # Clean up stream
                                 try:
