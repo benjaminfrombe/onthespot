@@ -473,13 +473,23 @@ class DownloadWorker(QObject):
                                 elif bytes_missing > 0:
                                     logger.debug(f"Download completed with minor discrepancy: {downloaded}/{total_size} bytes (missing {bytes_missing} bytes, within tolerance)")
 
-                                # Clean up stream
+                                # Clean up stream - CRITICAL for preventing file descriptor leaks
+                                # Each unclosed stream consumes a file descriptor
+                                # After many downloads, worker exhausts FDs causing FFmpeg to fail
                                 try:
-                                    stream.input_stream.stream().close()
-                                    stream_internal = stream.input_stream.stream()
-                                    del stream_internal, stream.input_stream
-                                except Exception:
-                                    pass  # Stream cleanup errors are non-critical
+                                    # Close the underlying stream first
+                                    stream_obj = stream.input_stream.stream()
+                                    stream_obj.close()
+                                    logger.debug("Closed Spotify stream successfully")
+                                except Exception as stream_err:
+                                    logger.warning(f"Error closing Spotify stream (may cause FD leak): {stream_err}")
+
+                                # Delete references to allow garbage collection
+                                try:
+                                    del stream.input_stream
+                                    del stream
+                                except Exception as del_err:
+                                    logger.warning(f"Error deleting stream references: {del_err}")
 
                                 download_successful = True
                                 logger.info(f"Download completed successfully after {download_retry_count + 1} attempt(s)")
@@ -498,10 +508,17 @@ class DownloadWorker(QObject):
                                                 os.remove(temp_file_path)
                                             except Exception:
                                                 pass
+
+                                        # Properly close stream to avoid FD leak even on error
                                         try:
-                                            stream.input_stream.stream().close()
-                                        except Exception:
-                                            pass
+                                            if 'stream' in locals():
+                                                stream_obj = stream.input_stream.stream()
+                                                stream_obj.close()
+                                                del stream.input_stream
+                                                del stream
+                                                logger.debug("Cleaned up stream after download error")
+                                        except Exception as cleanup_err:
+                                            logger.warning(f"Error cleaning up stream after download failure: {cleanup_err}")
                                         # Wait a bit before retrying
                                         time.sleep(2)
                                         continue
@@ -970,6 +987,17 @@ class DownloadWorker(QObject):
                         os.rename(temp_file_path, file_path)
                         item['file_path'] = file_path
 
+                        # Small delay for filesystem sync (helps in edge cases)
+                        time.sleep(0.1)
+
+                        # Validate file after download
+                        if not os.path.exists(file_path):
+                            raise RuntimeError(f"File disappeared after rename: {file_path}")
+                        file_size = os.path.getsize(file_path)
+                        if file_size == 0:
+                            raise RuntimeError(f"File is empty after download: {file_path}")
+                        logger.debug(f"File validated after download: {file_path} ({file_size} bytes)")
+
                         # Convert file format and embed metadata
                         if not config.get('raw_media_download'):
                             item['item_status'] = 'Converting'
@@ -1011,6 +1039,10 @@ class DownloadWorker(QObject):
                             final_path = file['path'].replace('~', '')
                             os.rename(file['path'], final_path)
                             file['path'] = final_path
+
+                        # Small delay for filesystem sync
+                        time.sleep(0.1)
+                        logger.debug(f"Video files validated after download")
 
                         if not config.get("raw_media_download"):
                             item['item_status'] = 'Converting'
