@@ -443,13 +443,20 @@ class DownloadWorker(QObject):
                         default_format = ".ogg"
                         temp_file_path += default_format
 
-                        # CRITICAL: Validate session health before download
-                        # Librespot sessions go stale after ~1 hour of idleness
-                        # Using stale sessions causes incomplete downloads → corrupted .ogg → FFmpeg exit 183
+                        # NUCLEAR OPTION: Force session recreation on EVERY download
+                        # Librespot sessions are unreliable - recreate from scratch every time
+                        # This is aggressive but ensures we NEVER use a stale session
                         current_account_idx = self._find_account_index('spotify', token)
                         if current_account_idx is not None:
-                            token = self._validate_spotify_session(token, current_account_idx)
-                            logger.debug(f"Using validated session from account {current_account_idx} for download")
+                            logger.info(f"FORCING session recreation for account {current_account_idx} before download")
+                            from .api.spotify import spotify_re_init_session
+                            try:
+                                spotify_re_init_session(account_pool[current_account_idx])
+                                token = account_pool[current_account_idx]['login']['session']
+                                logger.info(f"✓ Using fresh session for download")
+                            except Exception as e:
+                                logger.error(f"Failed to recreate session: {e}")
+                                raise
 
                         quality = AudioQuality.HIGH
                         bitrate = "160k"

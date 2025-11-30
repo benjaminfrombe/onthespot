@@ -223,46 +223,77 @@ def spotify_login_user(account):
 
 def spotify_re_init_session(account):
     """
-    Completely reinitialize a Spotify session by closing the old one and creating a new one.
+    NUCLEAR OPTION: Completely destroy and recreate a Spotify session from scratch.
 
-    Librespot sessions go stale after ~1 hour of idleness when Spotify disconnects inactive clients.
-    This function creates a fresh session with a new TCP connection to Spotify's access points.
+    This aggressively cleans up ALL session state and forces a completely fresh session.
+    Librespot sessions go stale and this ensures we start with a clean slate.
     """
-    session_json_path = os.path.join(cache_dir(), "sessions", f"ots_login_{account['uuid']}.json")
+    import gc
+    import time
 
-    # Close old session first to release resources
+    session_json_path = os.path.join(cache_dir(), "sessions", f"ots_login_{account['uuid']}.json")
+    username = account.get('username', 'unknown')
+
+    logger.info(f"NUCLEAR SESSION RESET for account {username} (UUID: {account['uuid']})")
+
+    # STEP 1: Aggressively destroy old session
     old_session = account.get('login', {}).get('session')
     if old_session:
         try:
+            # Try to close it
             old_session.close()
-            logger.debug(f"Closed old session for account {account['uuid']}")
+            logger.debug(f"Closed old session for {username}")
         except Exception as e:
-            logger.warning(f"Error closing old session (non-critical): {e}")
+            logger.warning(f"Error closing old session (will force cleanup anyway): {e}")
 
+        # Delete ALL references to force cleanup
+        try:
+            if 'session' in account.get('login', {}):
+                del account['login']['session']
+            del old_session
+            logger.debug(f"Deleted old session references for {username}")
+        except Exception as e:
+            logger.warning(f"Error deleting session references: {e}")
+
+    # STEP 2: Force garbage collection to clean up librespot internals
+    gc.collect()
+    logger.debug("Forced garbage collection")
+
+    # STEP 3: Small delay to ensure everything is cleaned up
+    time.sleep(0.5)
+
+    # STEP 4: Create completely fresh session from stored credentials
     try:
-        # Create brand new session with fresh connection
+        logger.info(f"Creating fresh session for {username}...")
+
+        # Build completely new config
         config = Session.Configuration.Builder().set_stored_credential_file(session_json_path).build()
-        logger.debug(f"Session config created for account {account['uuid']}")
 
+        # Create completely new session - this establishes a new TCP connection
         session = Session.Builder(conf=config).stored_file(session_json_path).create()
-        logger.info(f"Session reinitialized successfully for account {account['uuid']}")
 
-        # Update account with new session
+        # Verify session is actually working
+        try:
+            account_type = session.get_user_attribute("type")
+            logger.info(f"✓ NEW SESSION ACTIVE for {username} (type: {account_type})")
+        except Exception as verify_err:
+            logger.error(f"New session created but verification failed: {verify_err}")
+            raise RuntimeError(f"Session verification failed: {verify_err}")
+
+        # Update account with fresh session
         account['login']['session_path'] = session_json_path
         account['login']['session'] = session
         account['status'] = 'active'
-
-        # Update account type and bitrate
-        account_type = session.get_user_attribute("type")
         account['account_type'] = account_type
         account['bitrate'] = "320k" if account_type == "premium" else "160k"
 
-        logger.debug(f"Account {account['uuid']} session ready (type: {account_type}, bitrate: {account['bitrate']})")
+        logger.info(f"✓ NUCLEAR SESSION RESET SUCCESSFUL for {username} (bitrate: {account['bitrate']})")
+        return session
 
     except Exception as e:
-        logger.error(f'Failed to reinitialize session for account {account["uuid"]}: {e}')
+        logger.error(f'✗ NUCLEAR SESSION RESET FAILED for {username}: {e}')
         account['status'] = 'error'
-        raise  # Re-raise so caller knows it failed
+        raise RuntimeError(f"Failed to recreate session for {username}: {e}")
 
 
 def spotify_get_token(parsing_index):
