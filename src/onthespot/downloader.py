@@ -439,17 +439,40 @@ class DownloadWorker(QObject):
                                         if item['item_status'] == 'Cancelled':
                                            raise Exception("Download cancelled by user.")
 
-                                        # Check for stalled download before read
-                                        if time.time() - last_progress_time > stall_timeout:
-                                            raise Exception(f"Download stalled (no progress for {stall_timeout}s), reconnecting...")
+                                        # Check for stalled download (no progress for stall_timeout seconds)
+                                        time_since_progress = time.time() - last_progress_time
+                                        if time_since_progress > stall_timeout:
+                                            raise Exception(f"Download stalled (no progress for {time_since_progress:.1f}s), reconnecting...")
 
+                                        # Read with timeout to catch hanging reads
+                                        # The read() call can block indefinitely if stream hangs, so we need timeout protection
                                         read_start_time = time.time()
-                                        data = stream.input_stream.stream().read(config.get("download_chunk_size"))
+                                        data = None
+                                        read_error = None
+
+                                        # Use threading to implement read timeout
+                                        def read_with_timeout():
+                                            nonlocal data, read_error
+                                            try:
+                                                data = stream.input_stream.stream().read(config.get("download_chunk_size"))
+                                            except Exception as e:
+                                                read_error = e
+
+                                        read_thread = threading.Thread(target=read_with_timeout, daemon=True)
+                                        read_thread.start()
+                                        read_thread.join(timeout=stall_timeout)
+
+                                        if read_thread.is_alive():
+                                            # Read is still blocking after timeout - stream is stalled
+                                            raise Exception(f"Download stalled (read blocked for >{stall_timeout}s), reconnecting...")
+
+                                        if read_error:
+                                            raise read_error
+
                                         read_duration = time.time() - read_start_time
 
-                                        # Check if read operation itself took too long (indicating blocking/stalling)
-                                        if read_duration > stall_timeout:
-                                            raise Exception(f"Download stalled (read blocked for {read_duration:.1f}s), reconnecting...")
+                                        if data is None:
+                                            raise Exception("Read operation failed to return data")
 
                                         downloaded += len(data)
                                         if len(data) != 0:
