@@ -199,11 +199,11 @@
 
         /* Fixed column widths */
         .col-track { width: 50px; text-align: center; }
-        .col-name { width: 20%; min-width: 120px; }
+        .col-name { width: 18%; min-width: 120px; }
         .col-album { width: 15%; min-width: 100px; }
         .col-by { width: 12%; min-width: 80px; }
         .col-service { width: 10%; min-width: 90px; }
-        .col-status { width: 12%; min-width: 110px; max-width: 130px; }
+        .col-status { width: 130px; min-width: 130px; }
         .col-progress { width: 15%; min-width: 120px; }
         .col-action { width: 8%; min-width: 60px; text-align: right; }
 
@@ -216,9 +216,6 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.3px;
-            max-width: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
             white-space: nowrap;
         }
 
@@ -959,7 +956,6 @@
             const statusCell = document.createElement('td');
             statusCell.className = 'col-status';
             statusCell.dataset.cell = 'status';
-            statusCell.style.overflow = 'hidden';
             statusCell.innerHTML = createStatusBadge(item.item_status);
             row.appendChild(statusCell);
 
