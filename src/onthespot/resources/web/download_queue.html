@@ -186,6 +186,13 @@
             table-layout: fixed;
         }
 
+        /* Desktop-specific table styling */
+        @media screen and (min-width: 769px) {
+            table {
+                table-layout: fixed;
+            }
+        }
+
         th, td {
             padding: 12px 10px;
             font-size: 13px;
@@ -436,18 +443,47 @@
                 display: none !important;
             }
 
-            /* Mobile column widths - redistribute space without hidden columns */
-            .col-track { width: 45px; }
-            .col-name { width: auto; }
-            .col-status { width: 90px; }
-            .col-action { width: 50px; text-align: right; }
+            /* Mobile table: use auto layout for content-based sizing */
+            table {
+                table-layout: auto;
+            }
 
-            /* Make name column take available space */
+            /* Mobile columns: minimize fixed-width columns */
+            .col-track {
+                width: 1%;
+                white-space: nowrap;
+                text-align: center;
+            }
+
+            .col-name {
+                width: 100%;
+                max-width: 0;
+            }
+
+            .col-status {
+                width: 1%;
+                white-space: nowrap;
+                text-align: right;
+                padding-right: 8px !important;
+            }
+
+            .col-action {
+                width: 1%;
+                white-space: nowrap;
+                text-align: right;
+                padding-left: 4px !important;
+            }
+
+            /* Name cell: expand to fill, with ellipsis */
             .name-cell {
-                max-width: 180px;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+            }
+
+            /* Right-align status on mobile */
+            th.col-status {
+                text-align: right;
             }
 
             /* Compact status badge on mobile */
@@ -456,9 +492,10 @@
                 font-size: 9px;
             }
 
-            /* Stack action buttons if needed */
+            /* Compact action buttons */
             .action-cell {
-                flex-wrap: wrap;
+                display: flex;
+                justify-content: flex-end;
                 gap: 2px;
             }
 
@@ -495,10 +532,6 @@
             .mobile-action-bar button {
                 font-size: 9px;
                 padding: 8px 4px;
-            }
-
-            .name-cell {
-                max-width: 80px;
             }
         }
     </style>
