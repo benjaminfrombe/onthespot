@@ -6,6 +6,7 @@ import threading
 import time
 import traceback
 import os
+import queue
 from PyQt6.QtCore import QObject, pyqtSignal
 from librespot.audio.decoders import AudioQuality, VorbisOnlyAudioQuality
 from librespot.metadata import TrackId, EpisodeId
@@ -212,11 +213,19 @@ class DownloadWorker(QObject):
                     stream = token.content_feeder().load(audio_key, VorbisOnlyAudioQuality(quality), False, None)
                     logger.info(f"Successfully got stream from account index {current_account_idx}")
                     return stream, token, current_account_idx
-                except (RuntimeError, OSError) as e:
+                except (RuntimeError, OSError, queue.Empty) as e:
                     error_str = str(e)
-                    if any(x in error_str for x in ['Bad file descriptor', 'Cannot get alternative track', 'Unable to', 'Failed fetching audio key']):
+                    error_type = type(e).__name__
+
+                    # queue.Empty means audio key fetch timed out - always retry
+                    # Other errors check if they're in the known retryable list
+                    is_retryable = (error_type == 'Empty' or
+                                   any(x in error_str for x in ['Bad file descriptor', 'Cannot get alternative track',
+                                                                 'Unable to', 'Failed fetching audio key']))
+
+                    if is_retryable:
                         if attempt < max_retries_per_account - 1:
-                            logger.warning(f"Download stream failed (attempt {attempt + 1}) on account {current_account_idx}, reconnecting session: {e}")
+                            logger.warning(f"Download stream failed ({error_type}, attempt {attempt + 1}) on account {current_account_idx}, reconnecting session: {e}")
                             try:
                                 spotify_re_init_session(account_pool[current_account_idx])
                                 token = account_pool[current_account_idx]['login']['session']
@@ -257,11 +266,18 @@ class DownloadWorker(QObject):
                         stream = fallback_token.content_feeder().load(audio_key, VorbisOnlyAudioQuality(fallback_quality), False, None)
                         logger.info(f"Successfully got stream from fallback account index {account_idx}")
                         return stream, fallback_token, account_idx
-                    except (RuntimeError, OSError) as e:
+                    except (RuntimeError, OSError, queue.Empty) as e:
                         error_str = str(e)
-                        if any(x in error_str for x in ['Bad file descriptor', 'Cannot get alternative track', 'Unable to', 'Failed fetching audio key']):
+                        error_type = type(e).__name__
+
+                        # queue.Empty means audio key fetch timed out - always retry
+                        is_retryable = (error_type == 'Empty' or
+                                       any(x in error_str for x in ['Bad file descriptor', 'Cannot get alternative track',
+                                                                     'Unable to', 'Failed fetching audio key']))
+
+                        if is_retryable:
                             if attempt < max_retries_per_account - 1:
-                                logger.warning(f"Fallback account {account_idx} stream failed (attempt {attempt + 1}), reconnecting: {e}")
+                                logger.warning(f"Fallback account {account_idx} stream failed ({error_type}, attempt {attempt + 1}), reconnecting: {e}")
                                 try:
                                     spotify_re_init_session(account_pool[account_idx])
                                     fallback_token = account_pool[account_idx]['login']['session']
