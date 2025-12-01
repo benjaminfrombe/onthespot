@@ -221,22 +221,38 @@ def spotify_login_user(account):
         return False
 
 
-def spotify_re_init_session(account, max_retries=4):
+def spotify_re_init_session(account, max_retries=4, force=False):
     """
     NUCLEAR OPTION: Completely destroy and recreate a Spotify session from scratch.
 
     This aggressively cleans up ALL session state and forces a completely fresh session.
     Librespot sessions go stale and this ensures we start with a clean slate.
 
+    RATE LIMITED: Won't reconnect more than once per 30 seconds unless forced.
+
     Args:
         account: Account dictionary containing session information
         max_retries: Maximum number of connection retry attempts (default: 4)
+        force: If True, bypass rate limiting and force reconnection
     """
     import gc
     import time
 
     session_json_path = os.path.join(cache_dir(), "sessions", f"ots_login_{account['uuid']}.json")
     username = account.get('username', 'unknown')
+
+    # Rate limiting: Don't reconnect more than once per 30 seconds
+    MIN_RECONNECT_INTERVAL = 30  # seconds
+    last_reconnect = account.get('last_reconnect_time', 0)
+    time_since_last = time.time() - last_reconnect
+
+    if not force and time_since_last < MIN_RECONNECT_INTERVAL:
+        logger.info(
+            f"Rate limit: Session for {username} was reconnected {time_since_last:.1f}s ago, "
+            f"skipping reconnection (min interval: {MIN_RECONNECT_INTERVAL}s)"
+        )
+        # Return existing session without reconnecting
+        return account.get('login', {}).get('session')
 
     logger.info(f"NUCLEAR SESSION RESET for account {username} (UUID: {account['uuid']})")
 
@@ -300,6 +316,7 @@ def spotify_re_init_session(account, max_retries=4):
             account['status'] = 'active'
             account['account_type'] = account_type
             account['bitrate'] = "320k" if account_type == "premium" else "160k"
+            account['last_reconnect_time'] = time.time()  # Track reconnection time for rate limiting
 
             logger.info(f"✓ NUCLEAR SESSION RESET SUCCESSFUL for {username} (bitrate: {account['bitrate']})")
             return session
