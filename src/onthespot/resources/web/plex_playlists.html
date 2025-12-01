@@ -210,12 +210,7 @@
             </div>
         </div>
 
-        <div class="status-bar">
-            <p><strong>Plex Server:</strong> {{ config.plex_server_url or 'Not configured' }}</p>
-            <p><strong>Library:</strong> {% if config.plex_library_section_id %}Library {{ config.plex_library_section_id }}{% else %}Not selected{% endif %}</p>
-            <p><strong>M3U Directory:</strong> {{ m3u_directory }}</p>
-            <p><strong>Playlists Found:</strong> {{ playlists|length }}</p>
-        </div>
+
 
         {% if playlists|length > 0 %}
         <div class="playlists-grid" id="playlists-grid">
