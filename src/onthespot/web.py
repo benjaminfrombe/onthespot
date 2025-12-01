@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 import traceback
-from flask import Flask, jsonify, render_template, redirect, request, send_file, url_for, flash, Response
+from flask import Flask, jsonify, render_template, redirect, request, send_file, url_for, flash, Response, session
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from .accounts import FillAccountPool, get_account_token
 from .api.apple_music import apple_music_get_track_metadata, apple_music_add_account
@@ -174,7 +174,6 @@ class User(UserMixin):
 @login_manager.user_loader
 def load_user(user_id):
     # Load user with their role from session
-    from flask import session
     is_admin = session.get('is_admin', False)
     is_plex_user = session.get('is_plex_user', False)
     return User(user_id, is_admin=is_admin, is_plex_user=is_plex_user)
@@ -202,8 +201,8 @@ def login():
     if not config.get('use_webui_login') or not config.get('webui_username'):
         user = User('guest', is_admin=True)  # Guest has admin access
         login_user(user)
-        request.session['is_admin'] = True
-        request.session['is_plex_user'] = False
+        session['is_admin'] = True
+        session['is_plex_user'] = False
         return redirect(url_for('search'))
 
     if request.method == 'POST':
@@ -212,8 +211,8 @@ def login():
         if username == config.get('webui_username') and password == config.get('webui_password'):
             user = User(username, is_admin=True)  # Admin credentials = admin access
             login_user(user)
-            request.session['is_admin'] = True
-            request.session['is_plex_user'] = False
+            session['is_admin'] = True
+            session['is_plex_user'] = False
             return redirect(url_for('search'))
         flash('Invalid credentials, please try again.')
 
@@ -313,8 +312,8 @@ def auth_plex():
         # Create user session
         user = User(username, is_admin=is_admin, is_plex_user=True)
         login_user(user)
-        request.session['is_admin'] = is_admin
-        request.session['is_plex_user'] = True
+        session['is_admin'] = is_admin
+        session['is_plex_user'] = True
 
         logger.info(f"User logged in via Plex: {username} (admin: {is_admin})")
         return jsonify(success=True, user={'username': username, 'email': plex_user.get('email'), 'is_admin': is_admin})
