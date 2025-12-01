@@ -336,44 +336,31 @@ def spotify_re_init_session(account, max_retries=4):
 
 def spotify_get_token(parsing_index):
     """
-    Get Spotify token with ultra-aggressive session recreation.
+    Get Spotify session token.
 
-    Recreates session if it's been >30 seconds since last recreation
-    or if session is missing/invalid. Ultra-aggressive 30-second cooldown
-    because sessions degrade extremely fast under load and cause corrupted downloads.
+    LAZY RECONNECTION: Only recreates session when it's actually invalid,
+    not proactively. Sessions can stay healthy for hours if properly managed.
+
+    The old 30-second cooldown was counter-productive - it caused:
+    - Unnecessary Spotify API load → rate limiting
+    - TCP connection churn → connection resets
+    - More problems than it solved
+
+    Sessions go stale from INACTIVITY (30-60 min), not age.
     """
-    import time
     username = account_pool[parsing_index].get('username', 'unknown')
-
-    # Track last session creation time
-    last_session_time = account_pool[parsing_index].get('last_session_time', 0)
-    current_time = time.time()
-    time_since_reset = current_time - last_session_time
-
-    # Cooldown period: only recreate if >30 seconds old or if session missing
-    # Ultra-aggressive refresh - sessions degrade very quickly under load
-    COOLDOWN_SECONDS = 30  # 30 seconds
 
     try:
         token = account_pool[parsing_index]['login']['session']
-
-        # Check if session needs recreation
-        if time_since_reset > COOLDOWN_SECONDS:
-            logger.info(f"Session for {username} is {time_since_reset:.0f}s old, recreating...")
-            spotify_re_init_session(account_pool[parsing_index])
-            account_pool[parsing_index]['last_session_time'] = current_time
-            token = account_pool[parsing_index]['login']['session']
-        else:
-            logger.debug(f"Using existing session for {username} ({time_since_reset:.0f}s old)")
+        logger.debug(f"Using existing session for {username}")
+        return token
 
     except (OSError, AttributeError, KeyError) as e:
-        # Session missing or invalid - recreate immediately
+        # Session missing or invalid - recreate ONLY when needed
         logger.info(f'Session invalid for {username} ({e}), recreating...')
         spotify_re_init_session(account_pool[parsing_index])
-        account_pool[parsing_index]['last_session_time'] = current_time
         token = account_pool[parsing_index]['login']['session']
-
-    return token
+        return token
 
 
 def spotify_get_artist_album_ids(token, artist_id, _retry=False):

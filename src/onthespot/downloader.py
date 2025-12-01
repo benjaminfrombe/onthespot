@@ -64,7 +64,6 @@ class RetryWorker(QObject):
                             try:
                                 logger.info(f"Reconnecting Spotify account {account_idx}: {account.get('username', 'unknown')}")
                                 spotify_re_init_session(account)
-                                account['last_session_time'] = time.time()
                                 reconnected_count += 1
                             except Exception as e:
                                 logger.error(f"Failed to reconnect Spotify account {account_idx}: {e}")
@@ -489,6 +488,7 @@ class DownloadWorker(QObject):
                         download_successful = False
 
                         while download_retry_count < max_download_retries and not download_successful:
+                            stream = None  # Initialize for finally block
                             try:
                                 # Get stream (with account fallback)
                                 stream, token, _ = self._try_get_spotify_stream(item, item_id, item_type, token, quality)
@@ -606,24 +606,7 @@ class DownloadWorker(QObject):
 
                                 logger.info(f"Download verified: {actual_file_size} bytes, valid OGG header")
 
-                                # Clean up stream - CRITICAL for preventing file descriptor leaks
-                                # Each unclosed stream consumes a file descriptor
-                                # After many downloads, worker exhausts FDs causing FFmpeg to fail
-                                try:
-                                    # Close the underlying stream first
-                                    stream_obj = stream.input_stream.stream()
-                                    stream_obj.close()
-                                    logger.debug("Closed Spotify stream successfully")
-                                except Exception as stream_err:
-                                    logger.warning(f"Error closing Spotify stream (may cause FD leak): {stream_err}")
-
-                                # Delete references to allow garbage collection
-                                try:
-                                    del stream.input_stream
-                                    del stream
-                                except Exception as del_err:
-                                    logger.warning(f"Error deleting stream references: {del_err}")
-
+                                # Mark as successful - stream cleanup will happen in finally block
                                 download_successful = True
                                 logger.info(f"Download completed successfully after {download_retry_count + 1} attempt(s)")
 
@@ -647,28 +630,17 @@ class DownloadWorker(QObject):
                                             from .api.spotify import spotify_re_init_session
                                             try:
                                                 spotify_re_init_session(account_pool[current_account_idx])
-                                                account_pool[current_account_idx]['last_session_time'] = time.time()
                                                 token = account_pool[current_account_idx]['login']['session']
                                             except Exception as session_err:
                                                 logger.error(f"Failed to recreate session: {session_err}")
 
-                                        # Clean up partial file and stream
+                                        # Clean up partial file (stream cleanup in finally block)
                                         if os.path.exists(temp_file_path):
                                             try:
                                                 os.remove(temp_file_path)
                                             except Exception:
                                                 pass
 
-                                        # Properly close stream to avoid FD leak even on error
-                                        try:
-                                            if 'stream' in locals():
-                                                stream_obj = stream.input_stream.stream()
-                                                stream_obj.close()
-                                                del stream.input_stream
-                                                del stream
-                                                logger.debug("Cleaned up stream after download error")
-                                        except Exception as cleanup_err:
-                                            logger.warning(f"Error cleaning up stream after download failure: {cleanup_err}")
                                         # Wait a bit before retrying
                                         time.sleep(2)
                                         continue
@@ -678,6 +650,27 @@ class DownloadWorker(QObject):
                                 else:
                                     # Not a recoverable error, re-raise immediately
                                     raise
+
+                            finally:
+                                # CRITICAL: Always clean up stream to prevent file descriptor leaks
+                                # This runs whether download succeeds, fails, or is cancelled
+                                if stream is not None:
+                                    try:
+                                        stream_obj = stream.input_stream.stream()
+                                        stream_obj.close()
+                                        logger.debug("Closed Spotify stream in finally block")
+                                    except Exception as stream_err:
+                                        logger.warning(f"Error closing stream in finally: {stream_err}")
+
+                                    try:
+                                        del stream.input_stream
+                                        del stream
+                                    except Exception as del_err:
+                                        logger.warning(f"Error deleting stream references: {del_err}")
+
+                                    # Force garbage collection to clean up librespot resources
+                                    import gc
+                                    gc.collect()
 
                     elif item_service == 'deezer':
                         song = get_song_info_from_deezer_website(token, item['item_id'])
