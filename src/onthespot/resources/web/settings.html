@@ -566,6 +566,14 @@
                     </label>
                 </div>
                 <div class="setting-row">
+                    <label for="require_plex_server_access">Require Plex Server Access</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="require_plex_server_access" {% if config.require_plex_server_access is not defined or config.require_plex_server_access %}checked{% endif %}>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <small style="display: block; color: #666; margin-top: 5px;">Only allow Plex users who have access to your Plex server</small>
+                </div>
+                <div class="setting-row">
                     <label for="webui_username">Username</label>
                     <input type="text" id="webui_username" value="{{ config.webui_username }}" placeholder="Enter username">
                 </div>
@@ -1289,6 +1297,7 @@
                 active_account_number: activeAccountNumber ? activeAccountNumber.value : '',
                 use_webui_login: document.getElementById('use_webui_login').checked,
                 use_plex_login: document.getElementById('use_plex_login').checked,
+                require_plex_server_access: document.getElementById('require_plex_server_access').checked,
                 webui_username: document.getElementById('webui_username').value,
                 webui_password: document.getElementById('webui_password').value,
                 plex_server_url: document.getElementById('plex_server_url').value,
