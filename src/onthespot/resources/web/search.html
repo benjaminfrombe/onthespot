@@ -239,37 +239,51 @@
         }
 
         @media screen and (max-width: 600px) {
-            table {
-                table-layout: fixed;
+            /* Keep only thumbnail, name, and type visible and sized cleanly */
+            table thead th.hide-on-mobile,
+            table tbody td.hide-on-mobile,
+            table thead th.action-header,
+            table tbody td.action-cell {
+                display: none !important;
             }
 
-            table {
-                table-layout: auto;
+            /* Grid layout per row: thumbnail | name | type */
+            table tbody tr {
+                display: grid;
+                grid-template-columns: 56px 1fr auto;
+                align-items: center;
+                column-gap: 10px;
+                padding: 10px 8px;
             }
 
+            /* Reset cell padding to work with the grid */
             th, td {
-                padding: 10px 4px;
+                padding: 0;
             }
 
-            th:first-child,
-            td:first-child {
-                width: 52px;
+            .item-thumbnail {
+                width: 56px !important;
+                height: 56px !important;
+                border-radius: 8px;
+                object-fit: cover;
+            }
+
+            .item-name {
+                max-width: none;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
 
             th.type-column,
             td.type-column {
-                width: 70px;
                 text-align: right;
             }
 
             td.type-column .type-badge {
+                margin-left: 8px;
                 float: right;
-                margin-left: 6px;
-            }
-
-            th.type-column,
-            td.type-column {
-                text-align: right;
             }
 
             td.type-column .type-badge {
@@ -594,7 +608,7 @@
             }
 
             .item-name {
-                max-width: calc(100% - 120px);
+                max-width: none;
                 min-width: 0;
             }
 
