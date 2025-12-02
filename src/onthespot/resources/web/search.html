@@ -257,7 +257,7 @@
             table thead th.hide-on-mobile,
             table tbody td.hide-on-mobile,
             table thead th.action-header,
-            table tbody td.action-cell {
+            table tbody td.action-cell-td {
                 display: none !important;
             }
 
@@ -387,21 +387,29 @@
             vertical-align: middle;
         }
 
-        /* Action button cell */
-        /* keep buttons tightly grouped, right-aligned and vertically centered */
-        .action-cell {
-            display: flex;
+        /* Action button group inside the action column */
+        /* center the buttons inside the cell horizontally and vertically */
+        .action-group {
+            display: inline-flex;
             gap: 8px;
             flex-wrap: nowrap;
             align-items: center;    /* center vertically */
-            justify-content: flex-end; /* push to the right side of the cell */
+            justify-content: center; /* center horizontally within its TD */
+        }
+
+        /* Ensure the table cell (TD) that contains the action-group centers its
+           child horizontally and vertically. Using text-align keeps the inner
+           inline-flex group centered without converting the TD itself to flex. */
+        td.action-cell-td {
+            text-align: center;
+            vertical-align: middle;
         }
 
         /* Hide action button cell on small screens */
         @media screen and (max-width: 600px) {
-            .action-cell,
+            .action-group,
             th.action-header,
-            td.action-cell {
+            td.action-cell-td {
                 display: none !important;
             }
             .type-badge {
@@ -416,7 +424,7 @@
             }
         }
 
-        .action-cell .download-action-button {
+        .action-group .download-action-button {
             padding: 6px;
             min-width: 32px;
             min-height: 32px;
@@ -591,17 +599,17 @@
             }
 
             /* Compact action buttons */
-            .action-cell {
+            .action-group {
                 gap: 2px;
             }
 
-            .action-cell .download-action-button {
+            .action-group .download-action-button {
                 padding: 5px;
                 min-width: 28px;
                 min-height: 28px;
             }
 
-            .action-cell .download-action-button img {
+            .action-group .download-action-button img {
                 width: 14px;
                 height: 14px;
             }
@@ -1138,10 +1146,10 @@
                 
                 // Actions
                 const actionCell = document.createElement('td');
-                actionCell.className = 'action-cell';
+                actionCell.className = 'action-cell-td';
                 const linkButton = createButton('icons/link.png', 'Open Link', `window.open('${item.item_url}', '_blank')`);
                 const downloadButton = createButton('icons/download.png', 'Download', `handleDownload('${item.item_url}')`);
-                actionCell.innerHTML = `<div class="action-cell">${linkButton}${downloadButton}</div>`;
+                actionCell.innerHTML = `<div class="action-group">${linkButton}${downloadButton}</div>`;
                 row.appendChild(actionCell);
                 
                 tableBody.appendChild(row);
