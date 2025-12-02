@@ -240,27 +240,31 @@
 
         @media screen and (max-width: 600px) {
             table {
+                table-layout: fixed;
+            }
+
+            table {
                 table-layout: auto;
             }
 
             th, td {
-                padding: 10px 6px;
+                padding: 10px 4px;
             }
 
             th:first-child,
             td:first-child {
-                width: 64px;
+                width: 52px;
             }
 
             th.type-column,
             td.type-column {
-                width: 80px;
+                width: 70px;
                 text-align: right;
             }
 
             td.type-column .type-badge {
                 float: right;
-                margin-left: 8px;
+                margin-left: 6px;
             }
 
             th.type-column,
@@ -517,14 +521,14 @@
             }
 
             .item-name {
-                max-width: 64vw;
+                max-width: calc(100% - 120px);
                 min-width: 0;
             }
 
             /* Compact type badge on mobile */
             .type-badge {
-                padding: 3px 8px;
-                font-size: 10px;
+                padding: 2px 7px;
+                font-size: 9px;
             }
 
             /* Compact action buttons */
@@ -590,7 +594,7 @@
             }
 
             .item-name {
-                max-width: 64vw;
+                max-width: calc(100% - 120px);
                 min-width: 0;
             }
 
