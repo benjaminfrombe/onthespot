@@ -29,6 +29,9 @@ download_queue = {}
 parsing_lock = Lock()
 pending_lock = Lock()
 download_queue_lock = Lock()
+# Track playlists for which an M3U file has been pre-created
+precreated_playlists = set()
+precreated_playlists_lock = Lock()
 
 # Worker management
 worker_threads = []

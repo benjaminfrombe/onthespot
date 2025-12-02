@@ -34,7 +34,7 @@ from .otsconfig import cache_dir, config_dir, config
 from .parse_item import parsingworker, parse_url
 from .runtimedata import get_logger, account_pool, pending, download_queue, download_queue_lock, pending_lock, parsing, parsing_lock, register_worker, kill_all_workers, set_worker_restart_callback
 from .search import get_search_results
-from .utils import format_bytes
+from .utils import format_bytes, format_item_path, add_to_m3u_file
 
 logger = get_logger("web")
 os.environ['FLASK_ENV'] = 'production'
@@ -60,6 +60,87 @@ class QueueWorker(threading.Thread):
                     token = get_account_token(item['item_service'])
                     item_metadata = globals()[f"{item['item_service']}_get_{item['item_type']}_metadata"](token, item['item_id'])
                     if item_metadata:
+                        # If this item is part of a playlist and playlist m3u creation
+                        # is enabled, pre-create the complete playlist (one-time)
+                        try:
+                            if config.get('create_m3u_file') and item.get('parent_category') == 'playlist':
+                                # Identify playlist key (use name + owner as identifier)
+                                playlist_key = (item.get('playlist_name'), item.get('playlist_by'))
+                                from .runtimedata import precreated_playlists, precreated_playlists_lock, pending, pending_lock, download_queue, download_queue_lock
+
+                                with precreated_playlists_lock:
+                                    already = playlist_key in precreated_playlists
+
+                                if not already:
+                                    logger.info(f"Pre-creating M3U for playlist: {playlist_key}")
+
+                                    # Gather all local_ids for this playlist from pending and download_queue
+                                    found_local_ids = set()
+                                    with pending_lock:
+                                        for lid, p in pending.items():
+                                            if p.get('parent_category') == 'playlist' and p.get('playlist_name') == playlist_key[0] and p.get('playlist_by') == playlist_key[1]:
+                                                found_local_ids.add(lid)
+
+                                    with download_queue_lock:
+                                        for lid, q_item in download_queue.items():
+                                            if q_item.get('parent_category') == 'playlist' and q_item.get('playlist_name') == playlist_key[0] and q_item.get('playlist_by') == playlist_key[1]:
+                                                found_local_ids.add(lid)
+
+                                    # Also include the current item (might not be in pending anymore)
+                                    found_local_ids.add(item.get('local_id'))
+
+                                    # For each local id, attempt to fetch metadata and compute expected file path
+                                    for lid in list(found_local_ids):
+                                        try:
+                                            # Some items might still be in pending with limited info. Build a minimal item dict.
+                                            with pending_lock:
+                                                pending_item = pending.get(lid)
+                                            with download_queue_lock:
+                                                queued_item = download_queue.get(lid)
+
+                                            candidate = pending_item or queued_item
+                                            if not candidate:
+                                                # Nothing known about this item; skip
+                                                continue
+
+                                            service = candidate.get('item_service')
+                                            itype = candidate.get('item_type')
+                                            iid = candidate.get('item_id')
+
+                                            ttoken = get_account_token(service)
+                                            try:
+                                                meta = globals()[f"{service}_get_{itype}_metadata"](ttoken, iid)
+                                            except Exception as metaerr:
+                                                logger.debug(f"Failed to fetch metadata for pre-m3u: {lid} - {metaerr}")
+                                                continue
+
+                                            # Build an item-like dict for M3U writing
+                                            pseudo_item = {
+                                                'playlist_name': item.get('playlist_name'),
+                                                'playlist_by': item.get('playlist_by'),
+                                                'playlist_number': candidate.get('playlist_number') or meta.get('track_number'),
+                                                'item_service': service,
+                                                'item_id': iid
+                                            }
+
+                                            try:
+                                                # compute expected path and set it so add_to_m3u_file will write the entry
+                                                pseudo_item['file_path'] = format_item_path(pseudo_item, meta)
+                                            except Exception:
+                                                # If we can't compute path, skip this item
+                                                logger.debug(f"Could not compute path for playlist item {lid}")
+                                                continue
+
+                                            try:
+                                                add_to_m3u_file(pseudo_item, meta)
+                                            except Exception as m3u_error:
+                                                logger.error(f"Failed to pre-add item to M3U: {m3u_error}")
+
+                                    # Mark playlist as written so we only pre-create once
+                                    with precreated_playlists_lock:
+                                        precreated_playlists.add(playlist_key)
+                        except Exception:
+                            logger.error(f"Error while pre-creating playlist m3u: {traceback.format_exc()}")
                         with download_queue_lock:
                             download_queue[local_id] = {
                                 'local_id': local_id,
