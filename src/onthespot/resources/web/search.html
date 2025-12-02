@@ -252,15 +252,13 @@
                 display: grid;
                 grid-template-columns: 56px 1fr auto;
                 align-items: center;
-                column-gap: 10px;
-                padding: 10px 8px;
+                column-gap: 8px; /* tighten spacing so badge sits closer */
+                padding: 8px 8px;
             }
 
-            /* Header uses the same grid and a full-width background */
+            /* Hide the table header on mobile to avoid the heavy dark band */
             table thead {
-                display: block;
-                width: 100%;
-                background: rgba(255, 255, 255, 0.04);
+                display: none !important;
             }
 
             /* Match header to the body grid */
@@ -282,8 +280,11 @@
             .item-thumbnail {
                 width: 56px !important;
                 height: 56px !important;
+                min-width: 56px;
                 border-radius: 8px;
                 object-fit: cover;
+                display: block;     /* avoid baseline alignment issues */
+                align-self: center; /* ensure vertical centering */
             }
 
             .item-name {
@@ -301,7 +302,7 @@
             }
 
             td.type-column .type-badge {
-                margin-left: 8px;
+                margin-left: 6px;
                 float: none;
                 display: inline-block;
             }
