@@ -293,7 +293,9 @@
 
         /* Hide action button cell on small screens */
         @media screen and (max-width: 600px) {
-            .action-cell {
+            .action-cell,
+            th.action-header,
+            td.action-cell {
                 display: none !important;
             }
             .type-badge {
@@ -637,7 +639,7 @@
                             <th class="hide-on-mobile">By</th>
                             <th>Type</th>
                             <th class="hide-on-mobile">Service</th>
-                            <th>Action</th>
+                            <th class="action-header">Action</th>
                         </tr>
                     </thead>
                     <tbody id="results-body">
@@ -1024,6 +1026,7 @@
                 
                 // Actions
                 const actionCell = document.createElement('td');
+                actionCell.className = 'action-cell';
                 const linkButton = createButton('icons/link.png', 'Open Link', `window.open('${item.item_url}', '_blank')`);
                 const downloadButton = createButton('icons/download.png', 'Download', `handleDownload('${item.item_url}')`);
                 actionCell.innerHTML = `<div class="action-cell">${linkButton}${downloadButton}</div>`;
