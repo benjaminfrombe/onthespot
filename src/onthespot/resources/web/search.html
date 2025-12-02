@@ -256,6 +256,13 @@
                 padding: 10px 8px;
             }
 
+            /* Header uses the same grid and a full-width background */
+            table thead {
+                display: block;
+                width: 100%;
+                background: rgba(255, 255, 255, 0.04);
+            }
+
             /* Match header to the body grid */
             table thead tr {
                 display: grid;
@@ -263,6 +270,8 @@
                 align-items: center;
                 column-gap: 10px;
                 padding: 10px 8px;
+                width: 100%;
+                box-sizing: border-box;
             }
 
             /* Reset cell padding to work with the grid */
@@ -294,11 +303,6 @@
             td.type-column .type-badge {
                 margin-left: 8px;
                 float: none;
-                display: inline-block;
-            }
-
-            td.type-column .type-badge {
-                margin-left: auto;
                 display: inline-block;
             }
         }
