@@ -239,6 +239,30 @@
         }
 
         @media screen and (max-width: 600px) {
+            table {
+                table-layout: auto;
+            }
+
+            th, td {
+                padding: 10px 6px;
+            }
+
+            th:first-child,
+            td:first-child {
+                width: 64px;
+            }
+
+            th.type-column,
+            td.type-column {
+                width: 80px;
+                text-align: right;
+            }
+
+            td.type-column .type-badge {
+                float: right;
+                margin-left: 8px;
+            }
+
             th.type-column,
             td.type-column {
                 text-align: right;
@@ -329,58 +353,6 @@
             .type-badge:hover {
                 background: rgba(59,130,246,0.12);
                 box-shadow: 0 4px 16px rgba(59,130,246,0.16);
-            }
-        }
-
-        /* Improve table row layout on small screens so titles don't collide
-           with thumbnails and the type badge sits close to the title. */
-        @media screen and (max-width: 600px) {
-            /* Make each table row a horizontal flexbox so we can control spacing */
-            table tbody tr {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                padding: 10px 12px;
-            }
-
-            /* Thumbnail: fixed size and non-flexing */
-            .item-thumbnail {
-                width: 56px !important;
-                height: 56px !important;
-                min-width: 56px;
-                object-fit: cover;
-                border-radius: 8px;
-            }
-
-            /* Name should take remaining space but be allowed to truncate */
-            td.item-name {
-                flex: 1 1 auto;
-                min-width: 0; /* allow flex children to shrink and enable ellipsis */
-                max-width: calc(100% - 120px);
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                padding-right: 6px;
-            }
-
-            /* Hide columns that aren't useful on smaller screens (already hidden by earlier styles) */
-            td.service-cell,
-            td.action-cell,
-            td.hide-on-mobile {
-                display: none !important;
-            }
-
-            /* Bring the type-badge close to the title and keep it visible */
-            td > .type-badge,
-            .type-badge {
-                margin-left: 0;
-                margin-right: 6px;
-                flex: 0 0 auto;
-            }
-
-            /* Reduce header row visual padding */
-            thead th {
-                padding: 10px 8px;
             }
         }
 
@@ -540,26 +512,13 @@
                 font-size: 12px;
             }
 
-            .table-wrapper table {
-                table-layout: fixed;
-            }
-
-            th:first-child,
-            td:first-child {
-                width: 56px;
-            }
-
-            th.type-column,
-            td.type-column {
-                width: 88px;
-            }
-
             .hide-on-mobile {
                 display: none !important;
             }
 
             .item-name {
-                max-width: none;
+                max-width: 64vw;
+                min-width: 0;
             }
 
             /* Compact type badge on mobile */
@@ -631,7 +590,8 @@
             }
 
             .item-name {
-                max-width: none;
+                max-width: 64vw;
+                min-width: 0;
             }
 
             .image-preview-popup img {
