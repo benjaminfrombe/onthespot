@@ -199,11 +199,25 @@
 
         table {
             width: 100%;
+            border-collapse: collapse; /* ensure row borders render cleanly */
         }
 
         th, td {
             padding: 12px 10px;
             font-size: 13px;
+            /* remove the per-cell bottom border so we can draw one full-width
+               separator per row (prevents misaligned fragments in the action col) */
+            border-bottom: none;
+        }
+
+        /* Render a full-width separator on rows instead of per-cell borders */
+        table tbody tr {
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        /* Remove trailing separator on the last row */
+        table tbody tr:last-child {
+            border-bottom: none;
         }
 
         .type-column {
