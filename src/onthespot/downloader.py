@@ -110,7 +110,8 @@ class RetryWorker(QObject):
                         if account.get('service') == 'spotify' and account.get('login', {}).get('session'):
                             try:
                                 logger.info(f"Reconnecting Spotify account {account_idx}: {account.get('username', 'unknown')}")
-                                spotify_re_init_session(account)
+                                # Force reconnection to ensure failed downloads get fresh sessions
+                                spotify_re_init_session(account, force=True)
                                 reconnected_count += 1
                             except Exception as e:
                                 logger.error(f"Failed to reconnect Spotify account {account_idx}: {e}")
@@ -275,7 +276,8 @@ class DownloadWorker(QObject):
                         if attempt < max_retries_per_account - 1:
                             logger.warning(f"Download stream failed ({error_type}, attempt {attempt + 1}) on account {current_account_idx}, reconnecting session: {e}")
                             try:
-                                spotify_re_init_session(account_pool[current_account_idx])
+                                # Force reconnection to fix stream issues immediately
+                                spotify_re_init_session(account_pool[current_account_idx], force=True)
                                 token = account_pool[current_account_idx]['login']['session']
                                 # Refresh quality check with new token
                                 if token.get_user_attribute("type") == "premium" and item_type == 'track':
@@ -327,7 +329,8 @@ class DownloadWorker(QObject):
                             if attempt < max_retries_per_account - 1:
                                 logger.warning(f"Fallback account {account_idx} stream failed ({error_type}, attempt {attempt + 1}), reconnecting: {e}")
                                 try:
-                                    spotify_re_init_session(account_pool[account_idx])
+                                    # Force reconnection to fix fallback account stream issues
+                                    spotify_re_init_session(account_pool[account_idx], force=True)
                                     fallback_token = account_pool[account_idx]['login']['session']
                                     logger.info(f"Fallback account {account_idx} reconnected, retrying...")
                                 except Exception as reinit_err:
@@ -719,7 +722,8 @@ class DownloadWorker(QObject):
                                             logger.info(f"Forcing fresh session for account {current_account_idx} after stream failure")
                                             from .api.spotify import spotify_re_init_session
                                             try:
-                                                spotify_re_init_session(account_pool[current_account_idx])
+                                                # Force reconnection even if within rate limit window for corrupted streams
+                                                spotify_re_init_session(account_pool[current_account_idx], force=True)
                                                 token = account_pool[current_account_idx]['login']['session']
                                             except Exception as session_err:
                                                 logger.error(f"Failed to recreate session: {session_err}")
