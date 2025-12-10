@@ -177,7 +177,11 @@ def parsingworker():
 
                 # Check if token is valid
                 if token is None:
-                    logger.error(f"Failed to get valid token for {current_service}. Skipping item: {current_url}")
+                    logger.error(f"Failed to get valid token for {current_service}. Re-queuing item for retry: {current_url}")
+                    # Put the item back into parsing queue for retry
+                    with parsing_lock:
+                        parsing[item_id] = item
+                    time.sleep(5)  # Wait before retrying to give accounts time to initialize
                     continue
 
                 if current_service == "spotify":
