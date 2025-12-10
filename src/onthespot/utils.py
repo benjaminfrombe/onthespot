@@ -151,21 +151,36 @@ def format_item_path(item, item_metadata):
 
     # Calculate dynamic padding for playlist numbers based on total items
     playlist_number = item.get('playlist_number', '')
-    if playlist_number and item.get('playlist_total'):
+    if playlist_number:
         playlist_total = item.get('playlist_total')
-        # Determine padding width based on total count
-        padding_width = len(str(playlist_total))
-        playlist_number = str(playlist_number).zfill(padding_width)
-    else:
-        playlist_number = sanitize_data(playlist_number)
+        if playlist_total:
+            # Determine padding width based on total count
+            padding_width = len(str(playlist_total))
+            playlist_number = str(playlist_number).zfill(padding_width)
+            logger.debug(f"Playlist number padding: {item.get('playlist_number')} -> {playlist_number} (total: {playlist_total}, width: {padding_width})")
+        else:
+            playlist_number = str(playlist_number)
+            logger.warning(f"Missing playlist_total for item {item.get('item_id')}, using unpadded number: {playlist_number}")
+    playlist_number = sanitize_data(playlist_number)
     
-    # Calculate dynamic padding for track numbers based on total tracks in album
+    # Calculate dynamic padding for track numbers
+    # For playlists, use playlist_total for padding; for albums, use total_tracks
     track_number = item_metadata.get('track_number', 1)
-    total_tracks = item_metadata.get('total_tracks', 1)
-    if config.get('use_double_digit_path_numbers'):
-        # Use dynamic padding based on total tracks
+    
+    if item.get('parent_category') == 'playlist' and item.get('playlist_total'):
+        # For playlists, use playlist_total to determine padding
+        playlist_total = item.get('playlist_total')
+        padding_width = len(str(playlist_total))
+        track_number = str(track_number).zfill(padding_width)
+        logger.debug(f"Playlist track number padding: {item_metadata.get('track_number')} -> {track_number} (playlist_total: {playlist_total}, width: {padding_width})")
+    elif config.get('use_double_digit_path_numbers'):
+        # For albums, use total_tracks for padding
+        total_tracks = item_metadata.get('total_tracks', 1)
         padding_width = max(2, len(str(total_tracks)))
         track_number = str(track_number).zfill(padding_width)
+        logger.debug(f"Album track number padding: {item_metadata.get('track_number')} -> {track_number} (total_tracks: {total_tracks}, width: {padding_width})")
+    else:
+        track_number = str(track_number)
     
     item_path = path.format(
         # Universal
