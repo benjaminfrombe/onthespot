@@ -444,11 +444,13 @@ def convert_video_format(item, output_path, output_format, video_files, item_met
 
 
 def embed_metadata(item, metadata):
+    logger.info(f"embed_metadata() called for file: {item.get('file_path')}")
     if os.path.isfile(os.path.abspath(item['file_path'])):
         target_path = os.path.abspath(item['file_path'])
         file_name = os.path.basename(target_path)
         filetype = os.path.splitext(file_name)[1]
         file_stem = os.path.splitext(file_name)[0]
+        logger.info(f"Embedding metadata for {filetype} file: {file_name}")
 
         temp_name = os.path.join(os.path.dirname(target_path), "~" + file_stem + filetype)
 
@@ -633,15 +635,15 @@ def embed_metadata(item, metadata):
 
         # Add output parameter at last
         command += [item['file_path']]
-        logger.debug(
-            f'Embed metadata with ffmpeg. Built commandline {command}'
-            )
+        logger.info(f'Embedding metadata with ffmpeg for: {file_name}')
+        logger.debug(f'Embed metadata with ffmpeg. Built commandline {command}')
         try:
             # Run subprocess with CREATE_NO_WINDOW flag on Windows
             if os.name == 'nt':
                 subprocess.check_call(command, shell=False, creationflags=subprocess.CREATE_NO_WINDOW)
             else:
                 subprocess.check_call(command, shell=False)
+            logger.info(f'Successfully embedded metadata in: {file_name}')
             os.remove(temp_name)
         except subprocess.CalledProcessError as e:
             # Clean up both temp input and potentially corrupted output files
@@ -650,6 +652,8 @@ def embed_metadata(item, metadata):
             if os.path.isfile(item['file_path']):
                 os.remove(item['file_path'])
             raise RuntimeError(f"Failed to embed metadata: {e}")
+    else:
+        logger.error(f"embed_metadata() called but file does not exist: {item.get('file_path')}")
 
 
 def set_music_thumbnail(filename, metadata):
