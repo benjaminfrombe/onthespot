@@ -188,6 +188,7 @@ def parsingworker():
                     if current_type == "playlist":
                         items = spotify_get_playlist_items(token, current_id)
                         playlist_name, playlist_by = spotify_get_playlist_data(token, current_id)
+                        total_items = len(items)
                         for index, item in enumerate(items):
                             try:
                                 item_id = item['track']['id']
@@ -202,13 +203,15 @@ def parsingworker():
                                         'parent_category': 'playlist',
                                         'playlist_name': playlist_name,
                                         'playlist_by': playlist_by,
-                                        'playlist_number': str(index + 1)
+                                        'playlist_number': str(index + 1),
+                                        'playlist_total': total_items
                                         }
                             except TypeError:
                                 logger.error(f'TypeError for {item}')
                         continue
                     elif current_type == "liked_songs":
                         tracks = spotify_get_liked_songs(token)
+                        total_tracks = len(tracks)
                         for index, track in enumerate(tracks):
                             item_id = track['track']['id']
                             local_id = format_local_id(item_id)
@@ -221,11 +224,13 @@ def parsingworker():
                                     'parent_category': 'playlist',
                                     'playlist_name': 'Liked Songs',
                                     'playlist_by': 'me',
-                                    'playlist_number': str(index + 1)
+                                    'playlist_number': str(index + 1),
+                                    'playlist_total': total_tracks
                                     }
                         continue
                     elif current_type == "your_episodes":
                         tracks = spotify_get_your_episodes(token)
+                        total_tracks = len(tracks)
                         for index, track in enumerate(tracks):
                             item_id = track['episode']['id']
                             if item_id:
@@ -239,7 +244,8 @@ def parsingworker():
                                         'parent_category': 'playlist',
                                         'playlist_name': 'Your Episodes',
                                         'playlist_by': 'me',
-                                        'playlist_number': str(index + 1)
+                                        'playlist_number': str(index + 1),
+                                        'playlist_total': total_tracks
                                         }
                         continue
 

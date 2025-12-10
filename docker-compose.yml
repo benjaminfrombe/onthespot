@@ -9,3 +9,4 @@ services:
     - ./Music:/root/Music/OnTheSpot
     - ./Videos:/root/Videos/OnTheSpot
     - ./Config:/root/.config/onthespot
+    - ./src/onthespot:/app/venv/lib/python3.14/site-packages/onthespot
