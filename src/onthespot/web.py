@@ -124,6 +124,10 @@ class QueueWorker(threading.Thread):
                     token = get_account_token(item['item_service'])
                     item_metadata = globals()[f"{item['item_service']}_get_{item['item_type']}_metadata"](token, item['item_id'])
                     if item_metadata:
+                        # Preserve playlist context from pending item
+                        playlist_total = item.get('playlist_total')
+                        logger.debug(f"Transfer to download queue: item {local_id}, playlist_total={playlist_total}")
+                        
                         with download_queue_lock:
                             download_queue[local_id] = {
                                 'local_id': local_id,
@@ -139,7 +143,7 @@ class QueueWorker(threading.Thread):
                                 'playlist_name': item.get('playlist_name'),
                                 'playlist_by': item.get('playlist_by'),
                                 'playlist_number': item.get('playlist_number'),
-                                'playlist_total': item.get('playlist_total'),
+                                'playlist_total': playlist_total,
                                 'track_number': item_metadata.get('track_number'),
                                 'album_name': item_metadata.get('album_name'),
                                 'item_album_name': item_metadata.get('album_name'),
