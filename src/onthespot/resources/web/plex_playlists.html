@@ -248,6 +248,9 @@
             button.textContent = 'Importing...';
             statusDiv.textContent = 'Importing to Plex...';
             statusDiv.className = 'playlist-status status-importing';
+            
+            // Show notification that sync has started
+            showToast('Syncing playlist to Plex...', 'success');
 
             try {
                 const response = await fetch('/api/plex/import_playlist', {
@@ -283,6 +286,8 @@
 
         async function importAllPlaylists() {
             if (!confirm('Import all playlists to Plex? This may take a while.')) return;
+
+            showToast('Starting bulk sync to Plex...', 'success');
 
             const cards = document.querySelectorAll('.playlist-card');
             for (let i = 0; i < cards.length; i++) {

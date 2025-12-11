@@ -30,6 +30,10 @@ parsing_lock = Lock()
 pending_lock = Lock()
 download_queue_lock = Lock()
 
+# System notifications for web UI
+system_notifications = []
+system_notifications_lock = Lock()
+
 # Batch parsing state (for playlists/albums that add multiple items)
 batch_parse_in_progress = False
 batch_parse_lock = Lock()

@@ -33,7 +33,7 @@ except Exception as e:
 from .downloader import DownloadWorker, RetryWorker
 from .otsconfig import cache_dir, config_dir, config
 from .parse_item import parsingworker, parse_url
-from .runtimedata import get_logger, account_pool, pending, download_queue, download_queue_lock, pending_lock, parsing, parsing_lock, register_worker, set_worker_restart_callback, set_watchdog_restart_callback
+from .runtimedata import get_logger, account_pool, pending, download_queue, download_queue_lock, pending_lock, parsing, parsing_lock, register_worker, set_worker_restart_callback, set_watchdog_restart_callback, system_notifications, system_notifications_lock
 from . import runtimedata
 from .search import get_search_results
 from .utils import format_bytes
