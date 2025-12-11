@@ -198,7 +198,7 @@ def parsingworker():
                             logger.info(f"Playlist '{playlist_name}' has {total_items} items, adding to pending queue...")
                             
                             # Save playlist cover.jpg upfront before downloading tracks
-                            if playlist_image_url:
+                            if playlist_image_url and config.get('save_album_cover'):
                                 from .utils import format_item_path, sanitize_data
                                 import requests
                                 from PIL import Image
@@ -234,18 +234,16 @@ def parsingworker():
                                 os.makedirs(full_playlist_dir, exist_ok=True)
                                 
                                 cover_path = os.path.join(full_playlist_dir, 'cover.jpg')
-                                if not os.path.exists(cover_path):
-                                    try:
-                                        logger.info(f"Downloading playlist cover for '{playlist_name}' from URL: {playlist_image_url}")
-                                        img = Image.open(BytesIO(requests.get(playlist_image_url).content))
-                                        if img.mode != 'RGB':
-                                            img = img.convert('RGB')
-                                        img.save(cover_path, format='JPEG')
-                                        logger.info(f"Saved playlist cover: {cover_path}")
-                                    except Exception as e:
-                                        logger.error(f"Failed to save playlist cover: {e}")
-                                else:
-                                    logger.info(f"Playlist cover already exists: {cover_path}")
+                                # Always download playlist cover (don't check if exists)
+                                try:
+                                    logger.info(f"Downloading playlist cover for '{playlist_name}' from URL: {playlist_image_url}")
+                                    img = Image.open(BytesIO(requests.get(playlist_image_url).content))
+                                    if img.mode != 'RGB':
+                                        img = img.convert('RGB')
+                                    img.save(cover_path, format='JPEG')
+                                    logger.info(f"Saved playlist cover: {cover_path}")
+                                except Exception as e:
+                                    logger.error(f"Failed to save playlist cover: {e}")
                             for index, item in enumerate(items):
                                 try:
                                     item_id = item['track']['id']
