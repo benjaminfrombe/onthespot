@@ -310,10 +310,29 @@ class AutoClearWorker(threading.Thread):
                                     result = plex_api.scan_library()
                                     if result.get('success'):
                                         logger.info("Plex library scan triggered successfully")
+                                        # Add notification for web UI
+                                        with system_notifications_lock:
+                                            system_notifications.append({
+                                                'timestamp': time.time(),
+                                                'message': 'Plex library scan initiated',
+                                                'type': 'success'
+                                            })
                                     else:
                                         logger.warning(f"Plex library scan failed: {result.get('error')}")
+                                        with system_notifications_lock:
+                                            system_notifications.append({
+                                                'timestamp': time.time(),
+                                                'message': f"Plex library scan failed: {result.get('error')}",
+                                                'type': 'error'
+                                            })
                                 except Exception as e:
                                     logger.error(f"Failed to trigger Plex library scan: {e}")
+                                    with system_notifications_lock:
+                                        system_notifications.append({
+                                            'timestamp': time.time(),
+                                            'message': f"Failed to trigger Plex library scan: {str(e)}",
+                                            'type': 'error'
+                                        })
                         else:
                             # Check if enough time has passed
                             elapsed = time.time() - self.last_all_done_time
@@ -778,6 +797,15 @@ def download_media(local_id):
 def parse_download(url):
     parse_url(url)
     return jsonify(success=True)
+
+@app.route('/api/notifications', methods=['GET'])
+@login_required
+def get_notifications():
+    """Fetch and clear pending notifications"""
+    with system_notifications_lock:
+        notifications = list(system_notifications)
+        system_notifications.clear()
+    return jsonify(notifications=notifications)
 
 
 @app.route('/api/delete/<path:local_id>', methods=['DELETE'])

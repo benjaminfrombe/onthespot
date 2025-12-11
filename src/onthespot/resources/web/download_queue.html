@@ -1088,6 +1088,18 @@
                     renderTable(forceRebuild);
                     scheduleFetch();
                 })
+                .catch(err => console.error('Error fetching download queue:', err));
+            
+            // Also fetch notifications
+            fetch('/api/notifications')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.notifications && data.notifications.length > 0) {
+                        data.notifications.forEach(notif => {
+                            showToast(notif.message, notif.type);
+                        });
+                    }
+                })
                 .catch(error => {
                     console.error('Error fetching download queue:', error);
                     scheduleFetch();
