@@ -665,20 +665,30 @@ def set_music_thumbnail(filename, metadata):
 
         temp_name = os.path.join(os.path.dirname(target_path), "~" + file_stem + filetype)
 
-        image_path = os.path.join(os.path.dirname(filename), 'cover')
-        image_path += "." + config.get("album_cover_format")
+        # For playlists, save as cover.jpg in playlist directory (only once)
+        # For albums/tracks, use configured format
+        if metadata.get('parent_category') == 'playlist':
+            image_path = os.path.join(os.path.dirname(filename), 'cover.jpg')
+        else:
+            image_path = os.path.join(os.path.dirname(filename), 'cover')
+            image_path += "." + config.get("album_cover_format")
 
-        # Fetch thumbnail
-        #if not os.path.isfile(image_path) or (parent_category == 'playlist' and config.get('use_playlist_path')):
-        logger.info(f"Fetching item thumbnail")
-        img = Image.open(BytesIO(requests.get(metadata['image_url']).content))
-        buf = BytesIO()
-        if img.mode != 'RGB':
-            img = img.convert('RGB')
-        img.save(buf, format=config.get("album_cover_format"))
-        buf.seek(0)
-        with open(image_path, 'wb') as cover:
-            cover.write(buf.read())
+        # Fetch thumbnail only if it doesn't exist (avoid re-downloading for each playlist track)
+        if not os.path.isfile(image_path):
+            logger.info(f"Fetching item thumbnail")
+            img = Image.open(BytesIO(requests.get(metadata['image_url']).content))
+            buf = BytesIO()
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            # Force JPG for playlists, use config for others
+            img_format = 'JPEG' if metadata.get('parent_category') == 'playlist' else config.get("album_cover_format")
+            img.save(buf, format=img_format)
+            buf.seek(0)
+            with open(image_path, 'wb') as cover:
+                cover.write(buf.read())
+            logger.info(f"Saved cover image: {image_path}")
+        else:
+            logger.info(f"Cover image already exists: {image_path}")
 
         if not config.get('raw_media_download'):
             # I have no idea why music tag manages to display covers

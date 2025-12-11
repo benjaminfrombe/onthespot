@@ -1329,6 +1329,7 @@ class DownloadWorker:
                                 item_metadata['album_type'] = 'compilation'  # This triggers compilation=1 in embed_metadata
                                 item_metadata['disc_number'] = 1
                                 item_metadata['total_discs'] = 1
+                                item_metadata['parent_category'] = 'playlist'  # Pass to set_music_thumbnail for cover.jpg handling
                                 logger.info(f"Playlist track: setting album to '{item_metadata['album']}', album_artist='Various Artists', disc=1/1, and album_type='compilation'")
 
                             embed_metadata(item, item_metadata)
