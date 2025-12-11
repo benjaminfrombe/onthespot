@@ -517,6 +517,17 @@ class DownloadWorker(QObject):
 
                                         if not config.get('raw_media_download'):
                                             strip_metadata(item)
+                                            
+                                            # Override metadata for playlist tracks
+                                            if item.get('parent_category') == 'playlist':
+                                                item_metadata['album'] = item.get('playlist_name', item_metadata.get('album'))
+                                                item_metadata['album_name'] = item.get('playlist_name', item_metadata.get('album'))
+                                                item_metadata['album_artists'] = 'Various Artists'
+                                                item_metadata['album_type'] = 'compilation'
+                                                item_metadata['disc_number'] = 1
+                                                item_metadata['total_discs'] = 1
+                                                logger.info(f"Playlist track (existing): setting album to '{item_metadata['album']}', album_artist='Various Artists', disc=1/1, and album_type='compilation'")
+                                            
                                             embed_metadata(item, item_metadata)
 
                                             # Thumbnail
