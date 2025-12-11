@@ -132,8 +132,7 @@ class QueueWorker(threading.Thread):
                 
                 if pending:
                     # Set flag to prevent downloads during batch processing
-                    with runtimedata.batch_queue_processing_lock:
-                        runtimedata.batch_queue_processing = True
+                    runtimedata.set_batch_queue_processing_flag(True)
                     
                     try:
                         # Process all pending items at once
@@ -187,9 +186,8 @@ class QueueWorker(threading.Thread):
                         logger.info(f"QueueWorker finished processing batch, {len(download_queue)} items now in download queue")
                     finally:
                         # Always clear flag to allow downloads to start
-                        with runtimedata.batch_queue_processing_lock:
-                            runtimedata.batch_queue_processing = False
-                            logger.debug("Cleared batch_queue_processing flag")
+                        runtimedata.set_batch_queue_processing_flag(False)
+                        logger.debug("Cleared batch_queue_processing flag")
                 else:
                     time.sleep(0.2)
             except Exception as e:
@@ -197,6 +195,35 @@ class QueueWorker(threading.Thread):
 
     def stop(self):
         logger.info('Stopping Queue Worker')
+        self.is_running = False
+        self.join(timeout=5)
+
+
+class WatchdogWorker(threading.Thread):
+    """
+    Worker that monitors for stuck batch operation flags and clears them automatically.
+    Checks every 30 seconds for flags that have been stuck longer than timeout.
+    """
+    def __init__(self):
+        super().__init__()
+        self.is_running = True
+
+    def run(self):
+        logger.info('WatchdogWorker started')
+        while self.is_running:
+            try:
+                time.sleep(30)  # Check every 30 seconds
+                
+                # Check and clear stuck flags
+                from .runtimedata import check_and_clear_stuck_flags
+                if check_and_clear_stuck_flags():
+                    logger.warning("Watchdog cleared stuck flags - workers should resume")
+                    
+            except Exception as e:
+                logger.error(f"Error in WatchdogWorker: {e}\nTraceback: {traceback.format_exc()}")
+
+    def stop(self):
+        logger.info('Stopping Watchdog Worker')
         self.is_running = False
         self.join(timeout=5)
 
@@ -924,6 +951,11 @@ def main():
             retryworker.start()
             register_worker(retryworker)
 
+        # Start watchdog worker
+        watchdog_worker = WatchdogWorker()
+        watchdog_worker.start()
+        register_worker(watchdog_worker)
+        
         # Start auto-clear worker
         autoclear_worker = AutoClearWorker()
         autoclear_worker.start()

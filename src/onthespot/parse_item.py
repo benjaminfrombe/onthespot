@@ -188,8 +188,7 @@ def parsingworker():
                 if current_service == "spotify":
                     if current_type == "playlist":
                         # Set batch parse flag
-                        with runtimedata.batch_parse_lock:
-                            runtimedata.batch_parse_in_progress = True
+                        runtimedata.set_batch_parse_flag(True)
                         
                         try:
                             logger.info(f"Starting to parse playlist: {current_id}")
@@ -219,14 +218,12 @@ def parsingworker():
                             logger.info(f"Finished adding {total_items} items from playlist '{playlist_name}' to pending queue")
                         finally:
                             # Always clear batch parse flag
-                            with runtimedata.batch_parse_lock:
-                                runtimedata.batch_parse_in_progress = False
+                            runtimedata.set_batch_parse_flag(False)
                         
                         continue
                     elif current_type == "liked_songs":
                         # Set batch parse flag
-                        with runtimedata.batch_parse_lock:
-                            runtimedata.batch_parse_in_progress = True
+                        runtimedata.set_batch_parse_flag(True)
                         
                         try:
                             logger.info("Starting to parse liked_songs")
@@ -251,14 +248,12 @@ def parsingworker():
                             logger.info(f"Finished adding {total_tracks} items from Liked Songs to pending queue")
                         finally:
                             # Always clear batch parse flag
-                            with runtimedata.batch_parse_lock:
-                                runtimedata.batch_parse_in_progress = False
+                            runtimedata.set_batch_parse_flag(False)
                         
                         continue
                     elif current_type == "your_episodes":
                         # Set batch parse flag
-                        with runtimedata.batch_parse_lock:
-                            runtimedata.batch_parse_in_progress = True
+                        runtimedata.set_batch_parse_flag(True)
                         
                         try:
                             logger.info("Starting to parse your_episodes")
@@ -284,15 +279,13 @@ def parsingworker():
                             logger.info(f"Finished adding {total_tracks} items from Your Episodes to pending queue")
                         finally:
                             # Always clear batch parse flag
-                            with runtimedata.batch_parse_lock:
-                                runtimedata.batch_parse_in_progress = False
+                            runtimedata.set_batch_parse_flag(False)
                         
                         continue
 
                 if current_service == 'youtube_music' and current_type == 'artist':
                     # Set batch parse flag
-                    with runtimedata.batch_parse_lock:
-                        runtimedata.batch_parse_in_progress = True
+                    runtimedata.set_batch_parse_flag(True)
                     
                     try:
                         logger.info(f"Starting to parse artist: {current_id}")
@@ -312,8 +305,7 @@ def parsingworker():
                         logger.info(f"Finished adding {total_items} items from artist to pending queue")
                     finally:
                         # Always clear batch parse flag
-                        with runtimedata.batch_parse_lock:
-                            runtimedata.batch_parse_in_progress = False
+                        runtimedata.set_batch_parse_flag(False)
                     
                     continue
 
@@ -343,8 +335,7 @@ def parsingworker():
 
                 elif current_type in ["podcast", "audiobook"]:
                     # Set batch parse flag
-                    with runtimedata.batch_parse_lock:
-                        runtimedata.batch_parse_in_progress = True
+                    runtimedata.set_batch_parse_flag(True)
                     
                     try:
                         logger.info(f"Starting to parse {current_type}: {current_id}")
@@ -364,15 +355,13 @@ def parsingworker():
                         logger.info(f"Finished adding {total_items} items from {current_type} to pending queue")
                     finally:
                         # Always clear batch parse flag
-                        with runtimedata.batch_parse_lock:
-                            runtimedata.batch_parse_in_progress = False
+                        runtimedata.set_batch_parse_flag(False)
                     
                     continue
 
                 elif current_type in ["album", "playlist", "mix"]:
                     # Set batch parse flag
-                    with runtimedata.batch_parse_lock:
-                        runtimedata.batch_parse_in_progress = True
+                    runtimedata.set_batch_parse_flag(True)
                     
                     try:
                         playlist_name = ''
@@ -407,8 +396,7 @@ def parsingworker():
                         logger.info(f"Finished adding {total_items} items from {current_type} to pending queue")
                     finally:
                         # Always clear batch parse flag
-                        with runtimedata.batch_parse_lock:
-                            runtimedata.batch_parse_in_progress = False
+                        runtimedata.set_batch_parse_flag(False)
                     
                     continue
 

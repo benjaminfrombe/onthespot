@@ -33,10 +33,15 @@ download_queue_lock = Lock()
 # Batch parsing state (for playlists/albums that add multiple items)
 batch_parse_in_progress = False
 batch_parse_lock = Lock()
+batch_parse_start_time = None  # Track when flag was set
 
 # Batch queue processing state (when QueueWorker is adding many items to download queue)
 batch_queue_processing = False
 batch_queue_processing_lock = Lock()
+batch_queue_processing_start_time = None  # Track when flag was set
+
+# Timeout for batch operations (in seconds)
+BATCH_OPERATION_TIMEOUT = 300  # 5 minutes
 
 # Worker management
 worker_threads = []
@@ -237,3 +242,54 @@ def set_worker_restart_callback(callback):
     global worker_restart_callback
     worker_restart_callback = callback
     logger_.info(f"Worker restart callback registered: {callback.__name__}")
+
+
+def set_batch_parse_flag(value):
+    """Set batch_parse_in_progress flag with timestamp tracking"""
+    import time
+    global batch_parse_in_progress, batch_parse_start_time
+    with batch_parse_lock:
+        batch_parse_in_progress = value
+        batch_parse_start_time = time.time() if value else None
+
+
+def set_batch_queue_processing_flag(value):
+    """Set batch_queue_processing flag with timestamp tracking"""
+    import time
+    global batch_queue_processing, batch_queue_processing_start_time
+    with batch_queue_processing_lock:
+        batch_queue_processing = value
+        batch_queue_processing_start_time = time.time() if value else None
+
+
+def check_and_clear_stuck_flags():
+    """Check if batch operation flags are stuck and clear them if timeout exceeded"""
+    import time
+    global batch_parse_in_progress, batch_parse_start_time
+    global batch_queue_processing, batch_queue_processing_start_time
+    
+    cleared_any = False
+    
+    # Check batch_parse_in_progress flag
+    with batch_parse_lock:
+        if batch_parse_in_progress and batch_parse_start_time:
+            elapsed = time.time() - batch_parse_start_time
+            if elapsed > BATCH_OPERATION_TIMEOUT:
+                logger_.error(f"⚠️ STUCK FLAG DETECTED: batch_parse_in_progress has been True for {elapsed:.1f}s (timeout: {BATCH_OPERATION_TIMEOUT}s)")
+                logger_.error("Force-clearing batch_parse_in_progress flag to unstick QueueWorker")
+                batch_parse_in_progress = False
+                batch_parse_start_time = None
+                cleared_any = True
+    
+    # Check batch_queue_processing flag
+    with batch_queue_processing_lock:
+        if batch_queue_processing and batch_queue_processing_start_time:
+            elapsed = time.time() - batch_queue_processing_start_time
+            if elapsed > BATCH_OPERATION_TIMEOUT:
+                logger_.error(f"⚠️ STUCK FLAG DETECTED: batch_queue_processing has been True for {elapsed:.1f}s (timeout: {BATCH_OPERATION_TIMEOUT}s)")
+                logger_.error("Force-clearing batch_queue_processing flag to unstick DownloadWorkers")
+                batch_queue_processing = False
+                batch_queue_processing_start_time = None
+                cleared_any = True
+    
+    return cleared_any
