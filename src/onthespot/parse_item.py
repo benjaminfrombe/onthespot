@@ -198,7 +198,7 @@ def parsingworker():
                             logger.info(f"Playlist '{playlist_name}' has {total_items} items, adding to pending queue...")
                             
                             # Save playlist cover.jpg upfront before downloading tracks
-                            if playlist_image_url and config.get('save_album_cover'):
+                            if playlist_image_url:
                                 from .utils import format_item_path, sanitize_data
                                 import requests
                                 from PIL import Image
