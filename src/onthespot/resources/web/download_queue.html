@@ -45,6 +45,47 @@
             transition: width 0.3s ease-out;
         }
 
+        /* Image preview popup */
+        .image-preview-popup {
+            position: fixed;
+            z-index: 10000;
+            opacity: 0;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-origin: top left;
+            cursor: pointer;
+        }
+
+        .image-preview-popup.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .image-preview-popup img {
+            display: block;
+            max-width: 80vw;
+            max-height: 80vh;
+            min-width: 200px;
+            min-height: 200px;
+            width: auto;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .item-thumbnail {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .item-thumbnail:hover {
+            transform: scale(1.05);
+        }
+
         /* Status bar card */
         .status-bar {
             background: linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(76, 175, 80, 0.05) 100%);
@@ -608,7 +649,7 @@
                     <colgroup>
                         <col style="display: none;"> <!-- Local ID -->
                         {% if config.show_download_thumbnails %}
-                        <col class="hide-on-mobile" style="width: 60px;"> <!-- Thumbnail -->
+                        <col style="width: 60px;"> <!-- Thumbnail -->
                         {% endif %}
                         <col style="width: 50px;"> <!-- # -->
                         <col> <!-- Name - flexible -->
@@ -623,7 +664,7 @@
                         <tr>
                             <th style="display: none;">Local ID</th>
                             {% if config.show_download_thumbnails %}
-                            <th class="hide-on-mobile"></th>
+                            <th></th>
                             {% endif %}
                             <th class="col-track" data-sort="track_number">#</th>
                             <th class="col-name" data-sort="item_name">Name</th>
@@ -951,9 +992,17 @@
             // Thumbnail
             if (config.show_download_thumbnails) {
                 const imgCell = document.createElement('td');
-                imgCell.className = 'hide-on-mobile';
                 if (item.item_thumbnail) {
-                    imgCell.innerHTML = `<img src="${item.item_thumbnail}" class="item-thumbnail" loading="lazy" style="width: ${config.thumbnail_size}px; height: ${config.thumbnail_size}px;">`;
+                    const img = document.createElement('img');
+                    img.src = item.item_thumbnail;
+                    img.className = 'item-thumbnail';
+                    img.loading = 'lazy';
+                    img.style.width = config.thumbnail_size + 'px';
+                    img.style.height = config.thumbnail_size + 'px';
+                    img.onclick = function(e) { toggleImagePreview(item.item_thumbnail, e.target); };
+                    imgCell.appendChild(img);
+                } else {
+                    imgCell.innerHTML = '';
                 }
                 row.appendChild(imgCell);
             }
@@ -1174,10 +1223,74 @@
                 .catch(error => console.error('Error:', error));
         }
 
+        // ============= IMAGE PREVIEW FUNCTIONS =============
+        let imagePreviewVisible = false;
+
+        function getLargerImageUrl(thumbnailUrl) {
+            let largerUrl = thumbnailUrl;
+            if (largerUrl.includes('i.scdn.co/image/')) {
+                largerUrl = largerUrl.replace(/ab67616d[0-9a-f]{8}/, 'ab67616d0000b273');
+            }
+            largerUrl = largerUrl.replace(/\/(\d+)x(\d+)\//, '/640x640/');
+            largerUrl = largerUrl.replace(/small|thumb|thumbnail|medium/gi, 'large');
+            largerUrl = largerUrl.replace(/_small\.|_thumb\.|_thumbnail\.|_medium\./gi, '_large.');
+            largerUrl = largerUrl.replace(/([?&])(width|w|size)=\d+/gi, '$1$2=640');
+            largerUrl = largerUrl.replace(/([?&])(height|h)=\d+/gi, '$1$2=640');
+            return largerUrl;
+        }
+
+        function toggleImagePreview(imageUrl, thumbnailElement) {
+            if (imagePreviewVisible) {
+                hideImagePreview();
+            } else {
+                showImagePreview(imageUrl, thumbnailElement);
+            }
+        }
+
+        function showImagePreview(imageUrl, thumbnailElement) {
+            const popup = document.getElementById('image-preview-popup');
+            const img = document.getElementById('image-preview-img');
+            const rect = thumbnailElement.getBoundingClientRect();
+            const thumbnailLeft = rect.left;
+            const thumbnailTop = rect.top;
+            const thumbnailWidth = rect.width;
+            const thumbnailHeight = rect.height;
+            const largerUrl = getLargerImageUrl(imageUrl);
+            img.src = largerUrl;
+            const targetLeft = window.innerWidth / 2;
+            const targetTop = window.innerHeight / 2;
+            popup.style.left = thumbnailLeft + 'px';
+            popup.style.top = thumbnailTop + 'px';
+            popup.style.width = thumbnailWidth + 'px';
+            popup.style.height = thumbnailHeight + 'px';
+            popup.style.transform = 'translate(0, 0) scale(1)';
+            popup.offsetHeight;
+            popup.classList.add('visible');
+            imagePreviewVisible = true;
+            setTimeout(() => {
+                popup.style.left = targetLeft + 'px';
+                popup.style.top = targetTop + 'px';
+                popup.style.width = 'auto';
+                popup.style.height = 'auto';
+                popup.style.transform = 'translate(-50%, -50%) scale(1)';
+            }, 10);
+        }
+
+        function hideImagePreview() {
+            const popup = document.getElementById('image-preview-popup');
+            popup.classList.remove('visible');
+            imagePreviewVisible = false;
+        }
+
         // ============= INITIALIZATION =============
         window.onload = () => {
             setupSorting();
             fetchItems();
+            
+            const popup = document.getElementById('image-preview-popup');
+            if (popup) {
+                popup.addEventListener('click', hideImagePreview);
+            }
         };
     </script>
 
@@ -1185,6 +1298,11 @@
     <div id="toast" class="toast">
         <span class="toast-icon"></span>
         <span class="toast-message"></span>
+    </div>
+
+    <!-- Image preview popup -->
+    <div id="image-preview-popup" class="image-preview-popup">
+        <img id="image-preview-img" src="" alt="Preview">
     </div>
 </body>
 </html>
