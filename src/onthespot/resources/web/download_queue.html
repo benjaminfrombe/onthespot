@@ -450,12 +450,12 @@
                 padding-bottom: 80px;
             }
 
-            /* Show mobile thumbnail column, hide desktop thumbnail and track number */
+            /* Show mobile thumbnail column, hide desktop thumbnail */
             .mobile-thumbnail-col {
                 display: table-cell !important;
             }
 
-            .col-track {
+            .thumbnail-col {
                 display: none !important;
             }
 
@@ -499,10 +499,16 @@
             }
 
             /* Mobile columns: minimize fixed-width columns */
+            .mobile-thumbnail-col {
+                width: 50px;
+                padding-right: 4px !important;
+            }
+
             .col-track {
-                width: 1%;
+                width: 30px;
                 white-space: nowrap;
                 text-align: center;
+                padding-left: 4px !important;
             }
 
             .col-name {
@@ -657,9 +663,7 @@
                 <table>
                     <colgroup>
                         <col style="display: none;"> <!-- Local ID -->
-                        {% if config.show_download_thumbnails %}
-                        <col style="width: 60px;"> <!-- Thumbnail -->
-                        {% endif %}
+                        <col class="thumbnail-col" style="width: 60px;"> <!-- Thumbnail (always visible) -->
                         <col class="mobile-thumbnail-col" style="width: 50px; display: none;"> <!-- Mobile Thumbnail -->
                         <col style="width: 50px;"> <!-- # -->
                         <col> <!-- Name - flexible -->
@@ -673,9 +677,7 @@
                     <thead>
                         <tr>
                             <th style="display: none;">Local ID</th>
-                            {% if config.show_download_thumbnails %}
-                            <th></th>
-                            {% endif %}
+                            <th class="thumbnail-col hide-on-mobile"></th>
                             <th class="mobile-thumbnail-col" style="display: none;"></th>
                             <th class="col-track" data-sort="track_number">#</th>
                             <th class="col-name" data-sort="item_name">Name</th>
@@ -1000,23 +1002,23 @@
             idCell.dataset.localId = item.local_id;
             row.appendChild(idCell);
 
-            // Thumbnail (desktop)
-            if (config.show_download_thumbnails) {
-                const imgCell = document.createElement('td');
-                if (item.item_thumbnail) {
-                    const img = document.createElement('img');
-                    img.src = item.item_thumbnail;
-                    img.className = 'item-thumbnail';
-                    img.loading = 'lazy';
-                    img.style.width = config.thumbnail_size + 'px';
-                    img.style.height = config.thumbnail_size + 'px';
-                    img.onclick = function(e) { toggleImagePreview(item.item_thumbnail, e.target); };
-                    imgCell.appendChild(img);
-                } else {
-                    imgCell.innerHTML = '';
-                }
-                row.appendChild(imgCell);
+            // Thumbnail (desktop - always show)
+            const desktopImgCell = document.createElement('td');
+            desktopImgCell.className = 'thumbnail-col hide-on-mobile';
+            if (item.item_thumbnail) {
+                const img = document.createElement('img');
+                img.src = item.item_thumbnail;
+                img.className = 'item-thumbnail';
+                img.loading = 'lazy';
+                const thumbSize = config.show_download_thumbnails ? config.thumbnail_size : 40;
+                img.style.width = thumbSize + 'px';
+                img.style.height = thumbSize + 'px';
+                img.onclick = function(e) { toggleImagePreview(item.item_thumbnail, e.target); };
+                desktopImgCell.appendChild(img);
+            } else {
+                desktopImgCell.innerHTML = '';
             }
+            row.appendChild(desktopImgCell);
 
             // Mobile Thumbnail (always show on mobile)
             const mobileImgCell = document.createElement('td');
