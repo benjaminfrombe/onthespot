@@ -69,8 +69,16 @@ body {
     margin: 0;
     display: flex;
     justify-content: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.header ul::-webkit-scrollbar {
+    display: none;
 }
 
 .header li {
@@ -90,6 +98,8 @@ body {
     text-transform: uppercase;
     position: relative;
     overflow: hidden;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .header a::before {
