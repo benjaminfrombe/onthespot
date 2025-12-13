@@ -52,14 +52,15 @@ body {
 
 /* ============= HEADER NAVIGATION ============= */
 .header {
-    background-color: var(--background-tertiary);
-    padding: 0;
-    border-bottom: 1px solid var(--border-color);
+    background: linear-gradient(135deg, rgba(30, 30, 30, 0.98) 0%, rgba(26, 26, 26, 0.98) 100%);
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(76, 175, 80, 0.2);
     position: sticky;
     top: 0;
     z-index: 100;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
 .header ul {
@@ -69,6 +70,7 @@ body {
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
+    gap: 8px;
 }
 
 .header li {
@@ -78,23 +80,50 @@ body {
 .header a {
     display: block;
     text-decoration: none;
-    color: var(--accent);
-    padding: 14px 18px;
-    font-size: 14px;
-    font-weight: 500;
-    transition: all var(--transition-normal);
-    border-bottom: 2px solid transparent;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 12px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+}
+
+.header a::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(102, 187, 106, 0.15) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border-radius: 12px;
 }
 
 .header a:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: var(--accent-hover);
+    color: rgba(255, 255, 255, 0.95);
+    transform: translateY(-1px);
+}
+
+.header a:hover::before {
+    opacity: 1;
 }
 
 .header a.active {
-    background-color: var(--accent);
-    color: var(--background);
-    border-bottom-color: transparent;
+    background: linear-gradient(135deg, var(--accent) 0%, #66bb6a 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4),
+                0 0 20px rgba(76, 175, 80, 0.2);
+    transform: translateY(-1px);
+}
+
+.header a.active::before {
+    opacity: 0;
 }
 
 /* ============= BUTTONS ============= */
