@@ -22,7 +22,7 @@ from .api.youtube_music import youtube_music_get_track_metadata
 from .api.crunchyroll import crunchyroll_get_episode_metadata, crunchyroll_get_decryption_key, crunchyroll_get_mpd_info, crunchyroll_close_stream
 from .api.generic import generic_get_track_metadata
 from .otsconfig import config
-from .runtimedata import get_logger, download_queue, download_queue_lock, account_pool, temp_download_path, increment_failure_count, reset_failure_count
+from .runtimedata import get_logger, download_queue, download_queue_lock, account_pool, temp_download_path, increment_failure_count, reset_failure_count, album_download_locks, album_download_locks_lock
 from . import runtimedata
 from .utils import format_item_path, convert_audio_format, embed_metadata, set_music_thumbnail, fix_mp3_metadata, add_to_m3u_file, strip_metadata, convert_video_format
 
@@ -577,8 +577,19 @@ class DownloadWorker:
                         while download_retry_count < max_download_retries and not download_successful:
                             stream = None  # Initialize for finally block
                             try:
-                                # Get stream (with account fallback)
-                                stream, token, _ = self._try_get_spotify_stream(item, item_id, item_type, token, quality)
+                                # Get album-specific lock to prevent concurrent stream initialization from same album
+                                album_key = f"{item_service}:{item_metadata.get('album_id', item_id)}"
+                                with album_download_locks_lock:
+                                    if album_key not in album_download_locks:
+                                        album_download_locks[album_key] = threading.Lock()
+                                    album_lock = album_download_locks[album_key]
+                                
+                                # Acquire album lock for stream initialization to prevent race conditions
+                                with album_lock:
+                                    logger.debug(f"Acquired album lock for {album_key}")
+                                    # Get stream (with account fallback)
+                                    stream, token, _ = self._try_get_spotify_stream(item, item_id, item_type, token, quality)
+                                    logger.debug(f"Stream acquired, releasing album lock for {album_key}")
 
                                 # Validate stream is working with initial test read
                                 stall_timeout = config.get("download_stall_timeout")

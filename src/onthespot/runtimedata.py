@@ -34,6 +34,10 @@ download_queue_lock = Lock()
 system_notifications = []
 system_notifications_lock = Lock()
 
+# Album download locks to prevent concurrent downloads from same album
+album_download_locks = {}
+album_download_locks_lock = Lock()
+
 # Batch parsing state (for playlists/albums that add multiple items)
 batch_parse_in_progress = False
 batch_parse_lock = Lock()
