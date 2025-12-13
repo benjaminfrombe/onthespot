@@ -16,6 +16,17 @@ from ..utils import make_call, conv_list_format
 logger = get_logger("api.spotify")
 BASE_URL = "https://api.spotify.com/v1"
 
+# Cache for album track IDs to avoid repeated API calls and race conditions
+_album_track_ids_cache = {}
+_album_track_ids_cache_lock = threading.Lock()
+
+def clear_album_track_ids_cache():
+    """Clear the album track IDs cache to free memory."""
+    with _album_track_ids_cache_lock:
+        count = len(_album_track_ids_cache)
+        _album_track_ids_cache.clear()
+        logger.info(f"Cleared album track IDs cache ({count} entries)")
+
 
 class MirrorSpotifyPlayback:
     def __init__(self):
@@ -661,6 +672,13 @@ def spotify_get_your_episodes(token, _retry=False):
 
 
 def spotify_get_album_track_ids(token, album_id, _retry=False):
+    # Check cache first (thread-safe)
+    with _album_track_ids_cache_lock:
+        if album_id in _album_track_ids_cache:
+            logger.debug(f"Using cached track IDs for album: {album_id}")
+            return _album_track_ids_cache[album_id]
+    
+    # Not in cache, fetch from API
     logger.info(f"Getting tracks from album: {album_id}")
     tracks = []
     offset = 0
@@ -696,7 +714,13 @@ def spotify_get_album_track_ids(token, album_id, _retry=False):
     for track in tracks:
         if track:
             item_ids.append(track['id'])
+    
     logger.info(f"Album {album_id} has {len(item_ids)} tracks with IDs: {item_ids[:5]}{'...' if len(item_ids) > 5 else ''}")
+    
+    # Store in cache (thread-safe)
+    with _album_track_ids_cache_lock:
+        _album_track_ids_cache[album_id] = item_ids
+    
     return item_ids
 
 

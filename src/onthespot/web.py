@@ -893,6 +893,9 @@ def remove_account(uuid):
 def clear_cache():
     shutil.rmtree(os.path.join(cache_dir(), "reqcache"))
     shutil.rmtree(os.path.join(cache_dir(), "logs"))
+    # Clear in-memory album track IDs cache
+    from .api.spotify import clear_album_track_ids_cache
+    clear_album_track_ids_cache()
     return jsonify(success=True)
 
 
