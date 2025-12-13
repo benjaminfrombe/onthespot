@@ -6,6 +6,7 @@
     <title>OnTheSpot - Download Queue</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='utils.js') }}" defer></script>
     <style>
         /* ============= MOBILE-SPECIFIC OVERRIDES ============= */
@@ -1222,27 +1223,93 @@
             document.getElementById('queue-status-message').textContent = `${completed}/${total} completed • ${percent}%`;
         }
 
-        // ============= DATA FETCHING =============
-        function adjustFetchInterval(data) {
-            const activeCount = Object.values(data).filter(item => 
-                item.item_status === 'Downloading' || item.item_status === 'Waiting'
-            ).length;
+        // ============= WEBSOCKET CONNECTION =============
+        let socket = null;
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 10;
+        
+        function connectWebSocket() {
+            console.log('Connecting to WebSocket...');
+            socket = io({
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                reconnectionAttempts: MAX_RECONNECT_ATTEMPTS
+            });
             
-            fetchInterval = activeCount === 0 ? 2000 : 500;
+            socket.on('connect', function() {
+                console.log('WebSocket connected');
+                reconnectAttempts = 0;
+                // Fetch initial data
+                fetchInitialData();
+            });
+            
+            socket.on('queue_update', function(data) {
+                currentData = data;
+                renderTable(false);
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('WebSocket disconnected');
+            });
+            
+            socket.on('connect_error', function(error) {
+                console.error('WebSocket connection error:', error);
+                reconnectAttempts++;
+                if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                    console.warn('Max reconnection attempts reached, falling back to polling');
+                    socket.disconnect();
+                    fallbackToPolling();
+                }
+            });
         }
-
-        function fetchItems(forceRebuild = false) {
+        
+        function fetchInitialData() {
             fetch('/api/download_queue')
                 .then(response => response.json())
                 .then(data => {
                     currentData = data;
-                    adjustFetchInterval(data);
-                    renderTable(forceRebuild);
-                    scheduleFetch();
+                    renderTable(true);
                 })
-                .catch(err => console.error('Error fetching download queue:', err));
+                .catch(err => console.error('Error fetching initial data:', err));
+        }
+        
+        // Fallback to polling if WebSocket fails
+        function fallbackToPolling() {
+            console.log('Falling back to polling mode');
+            fetchInterval = 500;
             
-            // Also fetch notifications
+            function fetchItems(forceRebuild = false) {
+                fetch('/api/download_queue')
+                    .then(response => response.json())
+                    .then(data => {
+                        currentData = data;
+                        renderTable(forceRebuild);
+                        setTimeout(() => fetchItems(false), fetchInterval);
+                    })
+                    .catch(err => console.error('Error fetching download queue:', err));
+                
+                // Also fetch notifications
+                fetch('/api/notifications')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.notifications && data.notifications.length > 0) {
+                            data.notifications.forEach(notif => {
+                                showToast(notif.message, notif.type);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching notifications:', error);
+                    });
+            }
+            
+            fetchItems(true);
+        }
+        
+        // Fetch notifications separately (WebSocket only handles queue updates)
+        function fetchNotifications() {
             fetch('/api/notifications')
                 .then(response => response.json())
                 .then(data => {
@@ -1256,10 +1323,9 @@
                     console.error('Error fetching notifications:', error);
                 });
         }
-
-        function scheduleFetch() {
-            setTimeout(fetchItems, fetchInterval);
-        }
+        
+        // Poll notifications every 2 seconds
+        setInterval(fetchNotifications, 2000);
 
         // ============= API ACTIONS =============
         function clearItems() {
@@ -1387,7 +1453,7 @@
         // ============= INITIALIZATION =============
         window.onload = () => {
             setupSorting();
-            fetchItems();
+            connectWebSocket();  // Start WebSocket connection for real-time updates
             
             const popup = document.getElementById('image-preview-popup');
             if (popup) {

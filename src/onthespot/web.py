@@ -12,6 +12,7 @@ import time
 import traceback
 from flask import Flask, jsonify, render_template, redirect, request, send_file, url_for, flash, Response, session
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_socketio import SocketIO, emit
 from .accounts import FillAccountPool, get_account_token
 from .api.apple_music import apple_music_get_track_metadata, apple_music_add_account, apple_music_login_user
 from .api.bandcamp import bandcamp_get_track_metadata, bandcamp_login_user
@@ -108,6 +109,9 @@ app.config['REMEMBER_COOKIE_DURATION'] = REMEMBER_DURATION
 app.config['PERMANENT_SESSION_LIFETIME'] = REMEMBER_DURATION
 login_manager = LoginManager()
 login_manager.init_app(app)
+
+# Initialize SocketIO for real-time updates
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 
 class QueueWorker(threading.Thread):
@@ -383,6 +387,34 @@ class AutoClearWorker(threading.Thread):
         logger.info('Stopping AutoClear Worker')
         self.is_running = False
         self.join(timeout=5)
+
+
+class WebSocketBroadcaster(threading.Thread):
+    """Thread that broadcasts download queue updates via WebSocket"""
+    def __init__(self):
+        super().__init__()
+        self.is_running = True
+        self.daemon = True
+
+    def run(self):
+        logger.info('WebSocketBroadcaster started')
+        while self.is_running:
+            try:
+                time.sleep(0.1)  # Broadcast 10 times per second for real-time updates
+                
+                with download_queue_lock:
+                    queue_data = dict(download_queue)
+                
+                # Emit queue update to all connected clients
+                socketio.emit('queue_update', queue_data, namespace='/')
+                
+            except Exception as e:
+                logger.error(f"Error in WebSocketBroadcaster: {str(e)}")
+                time.sleep(1)
+
+    def stop(self):
+        logger.info('Stopping WebSocket Broadcaster')
+        self.is_running = False
 
 
 class User(UserMixin):
@@ -1051,6 +1083,11 @@ def main():
         autoclear_worker = AutoClearWorker()
         autoclear_worker.start()
         register_worker(autoclear_worker)
+        
+        # Start WebSocket broadcaster for real-time updates
+        ws_broadcaster = WebSocketBroadcaster()
+        ws_broadcaster.start()
+        register_worker(ws_broadcaster)
 
         logger.info("All workers started and registered")
 
@@ -1165,7 +1202,8 @@ def main():
         logger.info(f"  {rule.rule} -> {rule.endpoint}")
     logger.info("========================")
 
-    app.run(host=args.host, port=args.port, debug=args.debug)
+    # Use socketio.run instead of app.run for WebSocket support
+    socketio.run(app, host=args.host, port=args.port, debug=args.debug, allow_unsafe_werkzeug=True)
 
 
 if __name__ == '__main__':
