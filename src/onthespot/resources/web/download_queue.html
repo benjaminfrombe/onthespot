@@ -277,9 +277,10 @@
         }
 
         .status-downloading {
-            background: rgba(59, 130, 246, 0.2);
-            color: #60a5fa;
+            background: transparent;
+            color: #fff;
             overflow: visible;
+            isolation: isolate;
         }
 
         /* Progress bar fill for downloading badge */
@@ -294,6 +295,19 @@
             transition: width 0.3s ease-out;
             z-index: -1;
             width: var(--progress, 0%);
+        }
+        
+        /* Fallback background for when progress is 0 */
+        .status-badge.status-downloading::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(59, 130, 246, 0.2);
+            border-radius: 20px;
+            z-index: -2;
         }
 
         .status-waiting {
