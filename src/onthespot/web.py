@@ -312,12 +312,16 @@ class AutoClearWorker(threading.Thread):
 
                     # Check if all items are in a "done" state
                     all_done = True
+                    all_successful = True
                     for local_id, item in download_queue.items():
                         status = item.get("item_status", "")
                         if status not in ("Downloaded", "Already Exists", "Cancelled", "Unavailable", "Deleted", "Failed"):
                             # Found an item that's still in progress
                             all_done = False
                             break
+                        # Check if this item failed (for Plex scan decision)
+                        if status in ("Failed", "Cancelled", "Unavailable"):
+                            all_successful = False
 
                     if all_done:
                         # All items are done
@@ -326,8 +330,8 @@ class AutoClearWorker(threading.Thread):
                             self.last_all_done_time = time.time()
                             logger.info(f"All downloads complete. Will auto-clear in {self.CLEAR_DELAY_SECONDS} seconds...")
                             
-                            # Trigger Plex library scan if enabled
-                            if config.get('plex_auto_scan', False):
+                            # Trigger Plex library scan if enabled (only if all successful)
+                            if config.get('plex_auto_scan', False) and all_successful:
                                 try:
                                     from .api.plex import plex_api
                                     logger.info("Triggering Plex library scan after download completion...")
