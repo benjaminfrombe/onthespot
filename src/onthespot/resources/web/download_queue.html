@@ -730,6 +730,9 @@
     <script>
         const config = {{ config | tojson | safe }};
         
+        // Detect if touch device
+        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        
         // ============= STATE MANAGEMENT =============
         let currentData = {};
         let sortState = { key: "album_name", dir: "asc" };  // Default to album name, then track number
@@ -1017,7 +1020,20 @@
                 const thumbSize = config.show_download_thumbnails ? config.thumbnail_size : 40;
                 img.style.width = thumbSize + 'px';
                 img.style.height = thumbSize + 'px';
-                img.onclick = function(e) { toggleImagePreview(item.item_thumbnail, e.target); };
+                
+                // Add event listeners based on device type
+                if (isTouchDevice) {
+                    // On touch devices, use click to toggle
+                    img.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        toggleImagePreview(item.item_thumbnail, img);
+                    });
+                } else {
+                    // On desktop, use hover
+                    img.addEventListener('mouseenter', () => showImagePreview(item.item_thumbnail, img));
+                    img.addEventListener('mouseleave', hideImagePreview);
+                }
+                
                 desktopImgCell.appendChild(img);
             } else {
                 desktopImgCell.innerHTML = '';
@@ -1036,7 +1052,13 @@
                 img.style.width = '32px';
                 img.style.height = '32px';
                 img.style.maxWidth = '32px';
-                img.onclick = function(e) { toggleImagePreview(item.item_thumbnail, e.target); };
+                
+                // Mobile always uses click to toggle
+                img.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    toggleImagePreview(item.item_thumbnail, img);
+                });
+                
                 mobileImgCell.appendChild(img);
             } else {
                 mobileImgCell.innerHTML = '';
